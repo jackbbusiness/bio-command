@@ -1,0 +1,1882 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0D0F12" id="meta-theme">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BIO-COMMAND">
+<title>BIO-COMMAND</title>
+<script>
+/* Theme bootstrap: runs before CSS paint to avoid a dark flash in day mode */
+try {
+  if (window.localStorage.getItem("biocommand.theme") === "light") {
+    document.documentElement.dataset.theme = "light";
+  }
+} catch (e) {}
+</script>
+<style>
+/* ============================================================
+   BIO-COMMAND v0.6
+   Redesign: Google Health information architecture in the
+   Bio-Command identity. Data first; every configuration surface
+   lives behind SYS. Signature: the gradient recovery ring.
+   Layers carried forward: schema, scoring, uplink, intel,
+   advisor, day/night themes.
+   ============================================================ */
+
+:root {
+  --tac-base:    #0D0F12;
+  --tac-surface: #14181E;
+  --tac-raised:  #1B2028;
+  --tac-grid:    #171C23;
+  --tac-border:  #262E39;
+
+  --text-1: #E3E9EF;
+  --text-2: #8792A1;
+  --text-3: #545E6B;
+
+  --cyan:  #2FD7FF;
+  --red:   #FF3B4D;
+  --green: #1FE87E;
+  --amber: #FFAE2B;
+
+  --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --chrome-bg:  rgba(13, 15, 18, 0.88);
+  --overlay-bg: rgba(13, 15, 18, 0.97);
+
+  --r-card: 14px;
+  --r-chip: 999px;
+  --r-input: 10px;
+
+  --gutter: 14px;
+  --header-h: 46px;
+  --tabbar-h: 56px;
+}
+
+html { color-scheme: dark; }
+
+html[data-theme="light"] {
+  color-scheme: light;
+
+  --tac-base:    #EFF2F5;
+  --tac-surface: #FBFCFD;
+  --tac-raised:  #E8ECF0;
+  --tac-grid:    #E4E8ED;
+  --tac-border:  #D2D9E1;
+
+  --text-1: #171C22;
+  --text-2: #4E5A68;
+  --text-3: #9AA4B0;
+
+  --cyan:  #0088AE;
+  --red:   #D42A3C;
+  --green: #0C9E5C;
+  --amber: #B87A00;
+
+  --chrome-bg:  rgba(239, 242, 245, 0.9);
+  --overlay-bg: rgba(239, 242, 245, 0.97);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background-color: var(--tac-base);
+  background-image:
+    radial-gradient(ellipse 90% 40% at 50% 0%, rgba(47, 215, 255, 0.05), transparent 60%),
+    linear-gradient(var(--tac-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--tac-grid) 1px, transparent 1px);
+  background-size: 100% 100%, 30px 30px, 30px 30px;
+  color: var(--text-1);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+html[data-theme="light"] body {
+  background-image:
+    linear-gradient(var(--tac-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--tac-grid) 1px, transparent 1px);
+  background-size: 30px 30px, 30px 30px;
+}
+
+/* ---------- Type utilities ---------- */
+
+.hud-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.telemetry {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-1);
+}
+.cap { font-size: 10px; font-weight: 400; }
+.t2 { color: var(--text-2); }
+.t3 { color: var(--text-3); }
+
+/* ---------- Console header ---------- */
+
+header.console {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 30;
+  height: calc(var(--header-h) + env(safe-area-inset-top));
+  padding: calc(env(safe-area-inset-top) + 9px) var(--gutter) 0 var(--gutter);
+  background: var(--chrome-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--tac-border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-2);
+}
+header.console .sys-id { color: var(--text-1); font-weight: 600; letter-spacing: 0.14em; }
+header.console .sys-id .ver { color: var(--text-3); font-weight: 400; }
+.hdr-right { display: flex; align-items: center; gap: 9px; }
+
+.sync-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--text-3);
+  box-shadow: 0 0 6px transparent;
+}
+.sync-dot.ok   { background: var(--green); box-shadow: 0 0 7px var(--green); }
+.sync-dot.err  { background: var(--amber); box-shadow: 0 0 7px var(--amber); }
+.sync-dot.busy { background: var(--cyan);  box-shadow: 0 0 7px var(--cyan); }
+
+.mode-btn {
+  appearance: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-1);
+  background: transparent;
+  border: 1px solid var(--tac-border);
+  border-radius: var(--r-chip);
+  padding: 5px 11px;
+  cursor: pointer;
+}
+.mode-btn:active { border-color: var(--cyan); color: var(--cyan); }
+
+/* ---------- Layout ---------- */
+
+main {
+  position: relative;
+  z-index: 1;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding:
+    calc(var(--header-h) + env(safe-area-inset-top) + var(--gutter))
+    var(--gutter)
+    calc(var(--tabbar-h) + env(safe-area-inset-bottom) + var(--gutter))
+    var(--gutter);
+}
+section.view { display: none; }
+section.view.active { display: grid; gap: var(--gutter); }
+@media (min-width: 760px) {
+  section.view.active { grid-template-columns: 1fr 1fr; }
+  .span-2 { grid-column: span 2; }
+}
+@media (max-width: 759px) {
+  .span-2 { grid-column: auto; }
+}
+
+/* ---------- Cards ---------- */
+
+.hud-card {
+  background-color: var(--tac-surface);
+  border: 1px solid var(--tac-border);
+  border-radius: var(--r-card);
+  padding: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+html[data-theme="light"] .hud-card { box-shadow: 0 1px 2px rgba(23, 28, 34, 0.05); }
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.card-head .spacer { flex: 1; }
+
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+  flex: none;
+}
+
+/* ---------- Badges + chips ---------- */
+
+.badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  border-radius: var(--r-chip);
+  white-space: nowrap;
+}
+.sim-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #0D0F12;
+  background: var(--amber);
+  padding: 3px 8px;
+  border-radius: var(--r-chip);
+}
+
+/* ---------- Hero ---------- */
+
+.hero { padding: 18px 16px 14px; }
+.hero-top { display: flex; align-items: center; gap: 18px; }
+
+.ring-wrap { position: relative; width: 148px; height: 148px; flex: none; }
+.ring-wrap svg { width: 148px; height: 148px; transform: rotate(-90deg); display: block; }
+.ring-wrap circle { fill: none; }
+.ring-track { stroke: var(--tac-raised); stroke-width: 10; }
+.ring-arc {
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ring-arc { transition: none; }
+}
+.ring-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 3px;
+}
+.hero-score {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 46px;
+  font-weight: 650;
+  line-height: 1;
+}
+.hero-metric-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--text-3);
+}
+
+.hero-chips { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.stat-chip {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--tac-raised);
+  border: 1px solid var(--tac-border);
+  border-radius: var(--r-chip);
+  padding: 9px 13px;
+}
+.stat-chip .status-dot { width: 7px; height: 7px; }
+.stat-chip .sc-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em;
+  color: var(--text-3); text-transform: uppercase;
+}
+.stat-chip .sc-val {
+  margin-left: auto;
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+  font-size: 14px; font-weight: 600;
+}
+.stat-chip .sc-sub { font-family: var(--mono); font-size: 9px; color: var(--text-3); }
+
+.hero-actions { display: flex; gap: 8px; margin-top: 14px; }
+
+/* ---------- Buttons + inputs ---------- */
+
+.tac-btn {
+  appearance: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-1);
+  background: var(--tac-raised);
+  border: 1px solid var(--tac-border);
+  border-radius: var(--r-chip);
+  padding: 12px 16px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.tac-btn:active { border-color: var(--cyan); color: var(--cyan); }
+.tac-btn.primary { border-color: var(--cyan); color: var(--cyan); background: transparent; }
+.tac-btn.danger:active { border-color: var(--red); color: var(--red); }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+.tac-input {
+  appearance: none;
+  width: 100%;
+  background: var(--tac-raised);
+  border: 1px solid var(--tac-border);
+  border-radius: var(--r-input);
+  color: var(--text-1);
+  font-family: var(--mono);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  padding: 12px;
+  min-height: 48px;
+}
+.tac-input:focus { outline: none; border-color: var(--cyan); }
+.field-lbl { display: block; margin-bottom: 6px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-grid .full { grid-column: span 2; }
+.form-sep { border: 0; border-top: 1px solid var(--tac-border); margin: 6px 0; grid-column: span 2; }
+
+/* ---------- Key metrics grid ---------- */
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (min-width: 760px) { .metrics-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.metric-card {
+  background: var(--tac-surface);
+  border: 1px solid var(--tac-border);
+  border-radius: var(--r-card);
+  padding: 13px 13px 10px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+html[data-theme="light"] .metric-card { box-shadow: 0 1px 2px rgba(23, 28, 34, 0.05); }
+
+.mc-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 6px; margin-bottom: 7px;
+}
+.mc-label {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  letter-spacing: 0.13em; text-transform: uppercase; color: var(--text-2);
+}
+.mc-value-row { display: flex; align-items: baseline; gap: 4px; margin-bottom: 8px; }
+.mc-value {
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+  font-size: 22px; font-weight: 650; line-height: 1;
+}
+.mc-unit { font-family: var(--mono); font-size: 9px; color: var(--text-3); letter-spacing: 0.08em; }
+.mc-spark { display: block; width: 100%; height: 38px; }
+.mc-days {
+  display: flex; justify-content: space-between;
+  font-family: var(--mono); font-size: 8px; color: var(--text-3);
+  padding: 5px 2px 0;
+  letter-spacing: 0.05em;
+}
+
+/* ---------- Sleep architecture ---------- */
+
+.sleep-track { display: flex; height: 16px; gap: 3px; margin-top: 4px; }
+.sleep-track > i { display: block; border-radius: 4px; }
+.legend { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
+.legend .key {
+  display: flex; align-items: center; gap: 5px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; color: var(--text-3);
+}
+.legend .swatch { width: 8px; height: 8px; border-radius: 3px; display: inline-block; }
+
+/* ---------- Intel ---------- */
+
+.intel-headline {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  margin-bottom: 10px;
+}
+.intel-list { display: flex; flex-direction: column; gap: 9px; }
+.intel-item {
+  display: flex; gap: 8px; align-items: flex-start;
+  font-family: var(--mono); font-size: 11px; line-height: 1.5;
+  letter-spacing: 0.03em; color: var(--text-2);
+}
+.intel-item .status-dot { margin-top: 4px; }
+
+/* ---------- Advisor ---------- */
+
+.brief-out {
+  white-space: pre-wrap;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-1);
+  background: var(--tac-raised);
+  border: 1px solid var(--tac-border);
+  border-radius: var(--r-input);
+  padding: 13px;
+  margin-top: 4px;
+  max-height: 380px;
+  overflow-y: auto;
+  display: none;
+}
+.brief-out.show { display: block; }
+.ask-row { display: flex; gap: 8px; margin-top: 10px; }
+
+/* ---------- Tab bar ---------- */
+
+nav.tabbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 30;
+  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  padding: 6px 8px env(safe-area-inset-bottom);
+  background: var(--chrome-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--tac-border);
+  display: flex;
+  gap: 4px;
+}
+nav.tabbar button {
+  appearance: none;
+  flex: 1;
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-chip);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--text-3);
+  cursor: pointer;
+  min-height: 42px;
+}
+nav.tabbar button.active {
+  color: var(--cyan);
+  background: rgba(47, 215, 255, 0.1);
+}
+html[data-theme="light"] nav.tabbar button.active { background: rgba(0, 136, 174, 0.1); }
+
+.module-pending {
+  border: 1px dashed var(--tac-border);
+  border-radius: var(--r-card);
+  padding: 28px 14px;
+  text-align: center;
+  color: var(--text-3);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ---------- Log overlay ---------- */
+
+.overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: var(--overlay-bg);
+  display: none;
+  overflow-y: auto;
+  padding:
+    calc(env(safe-area-inset-top) + 16px)
+    var(--gutter)
+    calc(env(safe-area-inset-bottom) + 24px)
+    var(--gutter);
+}
+.overlay.open { display: block; }
+.overlay-inner { max-width: 560px; margin: 0 auto; }
+</style>
+</head>
+<body>
+
+<header class="console">
+  <div class="sys-id">BIO-COMMAND <span class="ver">v0.6</span></div>
+  <div class="hdr-right">
+    <span class="sync-dot" id="sync-dot" title="Garmin uplink"></span>
+    <span id="hdr-date"></span>
+    <button class="mode-btn" id="btn-theme" aria-label="Toggle day and night theme">NIGHT</button>
+    <button class="mode-btn" id="btn-sys" aria-label="Open system settings">SYS</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ================= TODAY / COMMAND ================= -->
+  <section class="view active" id="view-command">
+
+    <!-- Hero: recovery ring + glanceable chips -->
+    <div class="hud-card hero span-2">
+      <div class="hero-top">
+        <div class="ring-wrap">
+          <svg viewBox="0 0 148 148">
+            <defs>
+              <linearGradient id="ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" id="rg1" stop-color="#1FE87E"></stop>
+                <stop offset="100%" id="rg2" stop-color="#1FE87E" stop-opacity="0.45"></stop>
+              </linearGradient>
+            </defs>
+            <circle class="ring-track" cx="74" cy="74" r="62"></circle>
+            <circle class="ring-arc" id="hero-arc" cx="74" cy="74" r="62" stroke="url(#ring-grad)"></circle>
+          </svg>
+          <div class="ring-center">
+            <span class="hero-score" id="hero-score">--</span>
+            <span class="hero-metric-label">RECOVERY</span>
+            <span class="badge" id="hero-band">--</span>
+          </div>
+        </div>
+        <div class="hero-chips">
+          <div class="stat-chip">
+            <span class="status-dot" style="color: var(--red)"></span>
+            <span class="sc-label">Strain</span>
+            <span class="sc-val" id="chip-strain">--</span>
+            <span class="sc-sub">/21</span>
+          </div>
+          <div class="stat-chip">
+            <span class="status-dot" style="color: var(--cyan)"></span>
+            <span class="sc-label">HRV</span>
+            <span class="sc-val" id="chip-hrv">--</span>
+            <span class="sc-sub" id="chip-hrv-sub">MS</span>
+          </div>
+          <div class="stat-chip">
+            <span class="status-dot" style="color: var(--amber)"></span>
+            <span class="sc-label">Sleep</span>
+            <span class="sc-val" id="chip-sleep">--</span>
+            <span class="sc-sub" id="chip-sleep-sub"></span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <button class="tac-btn primary" id="btn-log" style="flex:1;">Log</button>
+        <button class="tac-btn" id="btn-brief-jump" style="flex:1;">Brief</button>
+        <span class="sim-tag" data-sim hidden style="align-self:center;">SIM</span>
+      </div>
+    </div>
+
+    <!-- Key metrics -->
+    <div class="span-2">
+      <div class="card-head" style="margin-bottom:9px; padding: 0 2px;">
+        <span class="hud-label">Key Metrics</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3">LAST 7 DAYS</span>
+      </div>
+      <div class="metrics-grid" id="metrics-grid"></div>
+    </div>
+
+    <!-- Sleep architecture -->
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="hud-label">Sleep Architecture</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t2" id="sleep-total">--</span>
+      </div>
+      <div class="sleep-track" id="sleep-track"></div>
+      <div class="legend" id="sleep-legend"></div>
+    </div>
+
+    <!-- Daily intel -->
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="status-dot" style="color: var(--cyan)"></span>
+        <span class="hud-label">Daily Intel</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3">ON-DEVICE</span>
+      </div>
+      <div class="intel-headline" id="intel-headline"></div>
+      <div class="intel-list" id="intel-list"></div>
+    </div>
+
+    <!-- Advisor brief (output only; key lives in SYS) -->
+    <div class="hud-card span-2" id="advisor-card">
+      <div class="card-head">
+        <span class="status-dot" id="advisor-dot" style="color: var(--text-3)"></span>
+        <span class="hud-label">Advisor Brief</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3" id="advisor-status"></span>
+      </div>
+      <div class="brief-out" id="brief-out"></div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="tac-btn primary" id="btn-brief" style="flex:1;">Generate briefing</button>
+      </div>
+      <div class="ask-row">
+        <input class="tac-input" id="ai-q" type="text" placeholder="ASK ABOUT YOUR DATA"
+               style="flex:1;" autocapitalize="off">
+        <button class="tac-btn" id="btn-ask">Ask</button>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ================= STUB VIEWS ================= -->
+  <section class="view" id="view-training">
+    <div class="hud-card module-pending span-2">
+      <div class="hud-label">Tactical Training</div>
+      <div class="telemetry cap" style="margin-top:8px;">MODULE OFFLINE // BUILDS IN SECTION 3</div>
+    </div>
+  </section>
+
+  <section class="view" id="view-fuel">
+    <div class="hud-card module-pending span-2">
+      <div class="hud-label">Fuel Engine</div>
+      <div class="telemetry cap" style="margin-top:8px;">MODULE OFFLINE // BUILDS IN SECTION 4</div>
+    </div>
+  </section>
+
+  <section class="view" id="view-bio">
+    <div class="hud-card module-pending span-2">
+      <div class="hud-label">Biomarker Telemetry</div>
+      <div class="telemetry cap" style="margin-top:8px;">MODULE OFFLINE // BUILDS IN SECTION 5</div>
+    </div>
+  </section>
+
+  <section class="view" id="view-proto">
+    <div class="hud-card module-pending span-2">
+      <div class="hud-label">Protocol Directives</div>
+      <div class="telemetry cap" style="margin-top:8px;">MODULE OFFLINE // BUILDS IN SECTION 6</div>
+    </div>
+  </section>
+
+  <!-- ================= SYS (settings, via header) ================= -->
+  <section class="view" id="view-sys">
+
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="status-dot" style="color: var(--cyan)"></span>
+        <span class="hud-label">Garmin Uplink</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3" id="uplink-last"></span>
+      </div>
+      <div class="form-grid">
+        <div class="full">
+          <label class="hud-label field-lbl" for="up-url">Feed URL</label>
+          <input class="tac-input" id="up-url" type="text" placeholder="data/telemetry.enc"
+                 autocapitalize="off" autocorrect="off" spellcheck="false">
+        </div>
+        <div class="full">
+          <label class="hud-label field-lbl" for="up-pass">Passphrase</label>
+          <input class="tac-input" id="up-pass" type="password" placeholder="********">
+        </div>
+        <div class="full btn-row" style="margin-top:2px;">
+          <button class="tac-btn primary" id="btn-sync" style="flex:2;">Sync now</button>
+          <button class="tac-btn" id="btn-save-uplink" style="flex:1;">Save</button>
+        </div>
+        <div class="full telemetry cap t3" id="uplink-status">Uplink not configured. Auto-sync runs on open once saved.</div>
+      </div>
+    </div>
+
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="status-dot" style="color: var(--text-3)"></span>
+        <span class="hud-label">Advisor Key</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3" id="advisor-key-status"></span>
+      </div>
+      <div class="form-grid">
+        <div class="full">
+          <label class="hud-label field-lbl" for="ai-key">Anthropic API key</label>
+          <input class="tac-input" id="ai-key" type="password" placeholder="sk-ant-..."
+                 autocapitalize="off" autocorrect="off" spellcheck="false">
+        </div>
+        <div class="full btn-row" style="margin-top:2px;">
+          <button class="tac-btn" id="btn-save-ai" style="flex:1;">Save key</button>
+        </div>
+        <div class="full telemetry cap t3">
+          Key stays on this device only. Your telemetry digest goes to Anthropic only when you request a brief.
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="status-dot" style="color: var(--text-3)"></span>
+        <span class="hud-label">Data</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3" id="db-size"></span>
+      </div>
+      <div class="telemetry cap t2" id="store-desc"></div>
+      <div class="btn-row">
+        <button class="tac-btn" id="btn-export">Export DB</button>
+        <button class="tac-btn" id="btn-import">Import DB</button>
+        <button class="tac-btn danger" id="btn-wipe">Wipe</button>
+        <input type="file" id="import-file" accept="application/json" hidden>
+      </div>
+    </div>
+
+  </section>
+
+</main>
+
+<!-- ================= LOG TELEMETRY OVERLAY ================= -->
+<div class="overlay" id="log-overlay">
+  <div class="overlay-inner">
+    <div class="card-head" style="margin-bottom:18px;">
+      <span class="status-dot" style="color: var(--cyan)"></span>
+      <span class="hud-label">Telemetry Log // <span id="log-date"></span></span>
+    </div>
+    <div class="form-grid">
+      <div>
+        <label class="hud-label field-lbl" for="in-hrv">HRV MS</label>
+        <input class="tac-input" id="in-hrv" type="number" inputmode="decimal" min="0" step="1" placeholder="--">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="in-rhr">RHR BPM</label>
+        <input class="tac-input" id="in-rhr" type="number" inputmode="decimal" min="0" step="1" placeholder="--">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="in-resp">RESP /MIN</label>
+        <input class="tac-input" id="in-resp" type="number" inputmode="decimal" min="0" step="0.1" placeholder="--">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="in-mass">MASS KG</label>
+        <input class="tac-input" id="in-mass" type="number" inputmode="decimal" min="0" step="0.1" placeholder="--">
+      </div>
+
+      <hr class="form-sep">
+
+      <div>
+        <label class="hud-label field-lbl" for="in-sleep-h">SLEEP HRS</label>
+        <input class="tac-input" id="in-sleep-h" type="number" inputmode="numeric" min="0" max="23" step="1" placeholder="7">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="in-sleep-m">SLEEP MIN</label>
+        <input class="tac-input" id="in-sleep-m" type="number" inputmode="numeric" min="0" max="59" step="1" placeholder="30">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="in-deep">DEEP MIN</label>
+        <input class="tac-input" id="in-deep" type="number" inputmode="numeric" min="0" step="1" placeholder="--">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="in-rem">REM MIN</label>
+        <input class="tac-input" id="in-rem" type="number" inputmode="numeric" min="0" step="1" placeholder="--">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="in-awake">AWAKE MIN</label>
+        <input class="tac-input" id="in-awake" type="number" inputmode="numeric" min="0" step="1" placeholder="--">
+      </div>
+      <div></div>
+
+      <hr class="form-sep">
+
+      <div>
+        <label class="hud-label field-lbl" for="in-train-min">TRAIN MIN</label>
+        <input class="tac-input" id="in-train-min" type="number" inputmode="numeric" min="0" step="1" placeholder="0">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="in-train-rpe">SESSION RPE 1-10</label>
+        <input class="tac-input" id="in-train-rpe" type="number" inputmode="decimal" min="0" max="10" step="0.5" placeholder="0">
+      </div>
+
+      <div class="full btn-row" style="margin-top:6px;">
+        <button class="tac-btn primary" id="btn-save-log" style="flex:2;">Commit</button>
+        <button class="tac-btn" id="btn-cancel-log" style="flex:1;">Abort</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <button data-view="view-command" class="active">CMD</button>
+  <button data-view="view-training">TRAIN</button>
+  <button data-view="view-fuel">FUEL</button>
+  <button data-view="view-bio">BIO</button>
+  <button data-view="view-proto">PROTO</button>
+</nav>
+
+<script>
+"use strict";
+
+/* ============================================================
+   STORAGE ADAPTER
+   ============================================================ */
+
+const Storage = (() => {
+  let mem = {};
+  let persistent = false;
+  try {
+    const k = "__bc_probe__";
+    window.localStorage.setItem(k, "1");
+    window.localStorage.removeItem(k);
+    persistent = true;
+  } catch (e) {
+    persistent = false;
+  }
+  return {
+    persistent,
+    get(key) {
+      if (persistent) return window.localStorage.getItem(key);
+      return Object.prototype.hasOwnProperty.call(mem, key) ? mem[key] : null;
+    },
+    set(key, value) {
+      if (persistent) window.localStorage.setItem(key, value);
+      else mem[key] = value;
+    },
+    remove(key) {
+      if (persistent) window.localStorage.removeItem(key);
+      else delete mem[key];
+    }
+  };
+})();
+
+/* ============================================================
+   DATA SCHEMA v1 (dayKey joins everything; strain is 0-21)
+   ============================================================ */
+
+const DB_KEY = "biocommand.db.v1";
+
+function emptyDB() {
+  return {
+    version: 1,
+    operator: {
+      callsign: "OPERATOR",
+      usesMetric: true,
+      baselineWindowDays: 30,
+      targetSleepMinutes: 450,
+      targetBodyMassKg: null,
+      targetProteinPerKg: 2.0,
+      createdAt: new Date().toISOString()
+    },
+    telemetry: {},
+    markers: {},
+    biomarkerLogs: [],
+    fuelPlans: {},
+    mealTemplates: [],
+    plannedMeals: [],
+    workouts: [],
+    sessions: [],
+    protocols: [],
+    completions: {},
+    briefings: {}
+  };
+}
+
+function loadDB() {
+  const raw = Storage.get(DB_KEY);
+  if (!raw) return emptyDB();
+  try {
+    const db = JSON.parse(raw);
+    if (db && db.version === 1) {
+      db.briefings = db.briefings || {};
+      return db;
+    }
+    return emptyDB();
+  } catch (e) {
+    return emptyDB();
+  }
+}
+
+function saveDB(db) {
+  Storage.set(DB_KEY, JSON.stringify(db));
+  renderDataCard();
+}
+
+let DB = loadDB();
+
+/* ---------- Helpers ---------- */
+
+function dayKey(d) {
+  const dt = d || new Date();
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const day = String(dt.getDate()).padStart(2, "0");
+  return y + "-" + m + "-" + day;
+}
+
+function fmtMin(min) {
+  const neg = min < 0;
+  const a = Math.abs(Math.round(min));
+  const h = Math.floor(a / 60);
+  const m = a % 60;
+  return (neg ? "-" : "") + h + ":" + String(m).padStart(2, "0");
+}
+
+function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  return {
+    red:   cs.getPropertyValue("--red").trim(),
+    amber: cs.getPropertyValue("--amber").trim(),
+    green: cs.getPropertyValue("--green").trim(),
+    cyan:  cs.getPropertyValue("--cyan").trim(),
+    dim:   cs.getPropertyValue("--text-3").trim()
+  };
+}
+let COLORS = readColors();
+
+function hexToRgba(hex, a) {
+  const h = hex.replace("#", "");
+  const n = parseInt(h, 16);
+  return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+}
+
+function bandColor(score) {
+  if (score == null) return COLORS.dim;
+  if (score < 34) return COLORS.red;
+  if (score < 67) return COLORS.amber;
+  return COLORS.green;
+}
+function bandName(score) {
+  if (score == null) return "CAL";
+  if (score < 34) return "RED";
+  if (score < 67) return "AMBER";
+  return "GREEN";
+}
+
+/* ============================================================
+   SCORING ENGINES
+   ============================================================ */
+
+function baselineFor(field, excludeKey, windowDays) {
+  const keys = Object.keys(DB.telemetry)
+    .filter(k => k !== excludeKey && DB.telemetry[k][field] != null)
+    .sort()
+    .reverse()
+    .slice(0, windowDays);
+  if (keys.length < 3) return null;
+  const sum = keys.reduce((s, k) => s + DB.telemetry[k][field], 0);
+  return sum / keys.length;
+}
+
+function computeStrain(trainMin, rpe) {
+  const lp = (trainMin || 0) * (rpe || 0);
+  if (lp <= 0) return 0;
+  return 21 * (1 - Math.exp(-lp / 450));
+}
+
+function computeScores(row, key) {
+  const win = DB.operator.baselineWindowDays;
+  const target = DB.operator.targetSleepMinutes;
+
+  const hrvBase = baselineFor("hrvMs", key, win);
+  const rhrBase = baselineFor("restingHR", key, win);
+
+  const out = {
+    hrvBase: hrvBase,
+    hrvDeltaPct: null,
+    readiness: null,
+    sleepPerf: null,
+    strain: computeStrain(row.trainingMinutes, row.sessionRPE),
+    calibrating: hrvBase == null
+  };
+
+  if (row.sleepTotalMin != null) {
+    out.sleepPerf = Math.min(100, Math.round(row.sleepTotalMin / target * 100));
+  }
+
+  if (hrvBase != null && row.hrvMs != null) {
+    const ratio = row.hrvMs / hrvBase;
+    out.hrvDeltaPct = Math.round((ratio - 1) * 100);
+    const hrvScore = clamp01((ratio - 0.55) / (1.20 - 0.55)) * 100;
+
+    let rhrScore = null;
+    if (rhrBase != null && row.restingHR != null && row.restingHR > 0) {
+      const rRatio = rhrBase / row.restingHR;
+      rhrScore = clamp01((rRatio - 0.80) / (1.12 - 0.80)) * 100;
+    }
+    const sleepScore = out.sleepPerf != null ? out.sleepPerf : null;
+
+    if (rhrScore != null && sleepScore != null) {
+      out.readiness = Math.round(0.50 * hrvScore + 0.25 * rhrScore + 0.25 * sleepScore);
+    } else if (sleepScore != null) {
+      out.readiness = Math.round(0.65 * hrvScore + 0.35 * sleepScore);
+    } else {
+      out.readiness = Math.round(hrvScore);
+    }
+  }
+
+  return out;
+}
+
+/* ============================================================
+   INTEL ENGINE
+   ============================================================ */
+
+function lastLogged(field, count) {
+  return Object.keys(DB.telemetry).sort().reverse()
+    .map(k => DB.telemetry[k][field])
+    .filter(v => v != null)
+    .slice(0, count);
+}
+
+function meanOf(arr) {
+  if (!arr.length) return null;
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+
+function buildIntel() {
+  const flags = [];
+  const keys = Object.keys(DB.telemetry).sort();
+  const n = keys.length;
+  const today = dayKey();
+
+  if (n === 0) {
+    flags.push({ tone: "dim", msg: "NO TELEMETRY IN STORE. SYNC OR LOG TO ARM THE INTEL ENGINE." });
+    return flags;
+  }
+  if (n < 7) {
+    flags.push({ tone: "cyan", msg: "DATASET " + n + " DAY(S). PATTERN CALLS UNLOCK AT 7+, LOAD RATIOS AT 14+." });
+  }
+
+  const hrvBase = baselineFor("hrvMs", today, DB.operator.baselineWindowDays);
+  const hrv3 = lastLogged("hrvMs", 3);
+  if (hrvBase && hrv3.length === 3 && hrv3.every(v => v < hrvBase * 0.93)) {
+    flags.push({ tone: "red", msg: "HRV SUPPRESSED 3 SESSIONS RUNNING (" +
+      Math.round(meanOf(hrv3)) + "MS VS BASE " + Math.round(hrvBase) +
+      "). CUT LOAD, PROTECT SLEEP." });
+  }
+
+  const rhrBase = baselineFor("restingHR", today, DB.operator.baselineWindowDays);
+  const rhr1 = lastLogged("restingHR", 1);
+  if (rhrBase && rhr1.length && rhr1[0] > rhrBase * 1.06) {
+    flags.push({ tone: "amber", msg: "RHR ELEVATED +" +
+      Math.round((rhr1[0] / rhrBase - 1) * 100) +
+      "% VS BASE. FATIGUE OR ILLNESS SIGNAL. MONITOR." });
+  }
+
+  const sleep7 = lastLogged("sleepTotalMin", 7);
+  if (sleep7.length >= 4) {
+    const debt = sleep7.reduce((a, v) => a + (DB.operator.targetSleepMinutes - v), 0);
+    if (debt > 90) {
+      flags.push({ tone: "amber", msg: "SLEEP DEBT " + fmtMin(debt) +
+        " OVER LAST " + sleep7.length + " NIGHTS. EARLIER LIGHTS OUT." });
+    } else if (debt < -60) {
+      flags.push({ tone: "green", msg: "SLEEP SURPLUS " + fmtMin(-debt) + ". BANKED RECOVERY." });
+    } else {
+      flags.push({ tone: "green", msg: "SLEEP HOLDING AT TARGET ACROSS " + sleep7.length + " NIGHTS." });
+    }
+  }
+
+  const strain28 = lastLogged("systemLoadScore", 28);
+  if (strain28.length >= 14) {
+    const acute = meanOf(strain28.slice(0, 7));
+    const chronic = meanOf(strain28);
+    if (chronic > 0.5) {
+      const acwr = acute / chronic;
+      if (acwr > 1.5) {
+        flags.push({ tone: "red", msg: "LOAD RAMP ACWR " + acwr.toFixed(2) +
+          ". SPIKE TERRITORY, HOLD VOLUME THIS WEEK." });
+      } else if (acwr < 0.8) {
+        flags.push({ tone: "cyan", msg: "ACWR " + acwr.toFixed(2) +
+          ". LOAD TAPERING, DETRAINING DRIFT IF SUSTAINED." });
+      } else {
+        flags.push({ tone: "green", msg: "LOAD RAMP CONTROLLED. ACWR " + acwr.toFixed(2) + "." });
+      }
+    }
+  }
+
+  const rdy3 = lastLogged("readinessScore", 3);
+  if (rdy3.length === 3 && rdy3.every(v => v >= 67)) {
+    flags.push({ tone: "green", msg: "3-DAY GREEN READINESS STREAK. WINDOW FOR AN OVERLOAD BLOCK." });
+  }
+
+  const order = { red: 0, amber: 1, cyan: 2, green: 3, dim: 4 };
+  flags.sort((a, b) => order[a.tone] - order[b.tone]);
+  return flags.slice(0, 6);
+}
+
+function toneColor(t) {
+  return t === "red" ? COLORS.red
+       : t === "amber" ? COLORS.amber
+       : t === "green" ? COLORS.green
+       : t === "cyan" ? COLORS.cyan : COLORS.dim;
+}
+
+function renderIntel() {
+  const list = document.getElementById("intel-list");
+  const headline = document.getElementById("intel-headline");
+  if (!list) return;
+  const flags = buildIntel();
+  list.innerHTML = "";
+  if (flags.length) {
+    headline.textContent = flags[0].msg;
+    headline.style.color = toneColor(flags[0].tone);
+  }
+  flags.slice(1).forEach(f => {
+    const item = document.createElement("div");
+    item.className = "intel-item";
+    item.innerHTML = '<span class="status-dot" style="color:' + toneColor(f.tone) +
+      '"></span><span>' + f.msg + "</span>";
+    list.appendChild(item);
+  });
+}
+
+/* ============================================================
+   SPARKLINES
+   ============================================================ */
+
+const SPARK_W = 132, SPARK_H = 38;
+
+function sparkLine(values, color) {
+  const n = values.length;
+  const defined = values.map((v, i) => ({ v, i })).filter(p => p.v != null);
+  if (!defined.length) return '<svg class="mc-spark" viewBox="0 0 132 38"></svg>';
+  const vals = defined.map(p => p.v);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const pad = (max - min) * 0.18 || Math.max(1, max * 0.05);
+  const lo = min - pad, hi = max + pad;
+  const x = i => 6 + i * (SPARK_W - 12) / (n - 1);
+  const y = v => SPARK_H - 5 - (v - lo) / (hi - lo) * (SPARK_H - 10);
+
+  let d = "", prevIdx = null;
+  defined.forEach(p => {
+    const cmd = (prevIdx != null && p.i === prevIdx + 1) ? "L" : "M";
+    d += cmd + x(p.i).toFixed(1) + " " + y(p.v).toFixed(1) + " ";
+    prevIdx = p.i;
+  });
+  const last = defined[defined.length - 1];
+  const area = d && defined.length > 1
+    ? '<path d="' + d + 'L' + x(last.i).toFixed(1) + " " + (SPARK_H - 3) +
+      " L" + x(defined[0].i).toFixed(1) + " " + (SPARK_H - 3) +
+      ' Z" fill="' + hexToRgba(color, 0.1) + '" stroke="none"></path>'
+    : "";
+  return '<svg class="mc-spark" viewBox="0 0 132 38">' + area +
+    '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round"></path>' +
+    '<circle cx="' + x(last.i).toFixed(1) + '" cy="' + y(last.v).toFixed(1) +
+    '" r="3" fill="' + color + '"></circle></svg>';
+}
+
+function sparkBars(values, color, fixedMax) {
+  const n = values.length;
+  const max = fixedMax || Math.max(...values.filter(v => v != null), 1);
+  const slot = SPARK_W / n, bw = slot * 0.5;
+  let rects = "";
+  values.forEach((v, i) => {
+    const cx = i * slot + slot / 2;
+    if (v == null || v <= 0) {
+      rects += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + (SPARK_H - 4) +
+        '" width="' + bw.toFixed(1) + '" height="2" rx="1" fill="' +
+        hexToRgba(color, 0.18) + '"></rect>';
+    } else {
+      const h = Math.max(3, (v / max) * (SPARK_H - 8));
+      rects += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + (SPARK_H - 2 - h).toFixed(1) +
+        '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" fill="' +
+        color + '"></rect>';
+    }
+  });
+  return '<svg class="mc-spark" viewBox="0 0 132 38">' + rects + "</svg>";
+}
+
+function last7Keys() {
+  const out = [];
+  const now = new Date();
+  for (let i = 6; i >= 0; i--) {
+    out.push(dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)));
+  }
+  return out;
+}
+
+function seriesFor(field) {
+  return last7Keys().map(k => {
+    const r = DB.telemetry[k];
+    return r && r[field] != null ? r[field] : null;
+  });
+}
+
+function dayLetters() {
+  const L = ["S", "M", "T", "W", "T", "F", "S"];
+  const now = new Date();
+  const out = [];
+  for (let i = 6; i >= 0; i--) {
+    out.push(L[new Date(now.getFullYear(), now.getMonth(), now.getDate() - i).getDay()]);
+  }
+  return out;
+}
+
+/* ============================================================
+   SIM FEED (only when the store is completely empty)
+   ============================================================ */
+
+const SIM = {
+  hrvMs: [78, 81, 76, 84, 80, 86, 84],
+  restingHR: [46, 45, 47, 44, 45, 44, 44],
+  sleepTotalMin: [432, 415, 468, 451, 440, 470, 462],
+  systemLoadScore: [8.2, 12.5, 0, 14.1, 6.4, 0, 13.0],
+  respiratoryRate: [15.1, 14.9, 15.0, 14.7, 14.8, 14.6, 14.8],
+  bodyMassKg: [84.6, 84.5, 84.5, 84.3, 84.4, 84.2, 84.1]
+};
+const SIM_TODAY = {
+  hrvMs: 84, restingHR: 44, respiratoryRate: 14.8,
+  sleepTotalMin: 462, sleepDeepMin: 78, sleepREMMin: 104,
+  sleepCoreMin: 262, sleepAwakeMin: 18, bodyMassKg: 84.1
+};
+const SIM_SCORES = { readiness: 82, sleepPerf: 100, strain: 13.0, hrvDeltaPct: 6, calibrating: false };
+
+function isSim() { return Object.keys(DB.telemetry).length === 0; }
+
+/* ============================================================
+   RENDER: HERO + METRICS + SLEEP
+   ============================================================ */
+
+const RING_C = 2 * Math.PI * 62;
+
+function renderHero(t, s, sim) {
+  const rdy = s.readiness;
+  const col = bandColor(rdy);
+  const arc = document.getElementById("hero-arc");
+  const loggedDays = Object.keys(DB.telemetry).length;
+
+  document.getElementById("rg1").setAttribute("stop-color", col);
+  document.getElementById("rg2").setAttribute("stop-color", col);
+
+  arc.setAttribute("stroke-dasharray", RING_C.toFixed(1));
+  const frac = rdy != null ? rdy / 100 : clamp01(loggedDays / 3) * 0.25;
+  arc.setAttribute("stroke-dashoffset", (RING_C * (1 - clamp01(frac))).toFixed(1));
+  arc.style.filter = "drop-shadow(0 0 10px " + hexToRgba(col, 0.5) + ")";
+
+  const scoreEl = document.getElementById("hero-score");
+  const bandEl = document.getElementById("hero-band");
+  if (rdy != null) {
+    scoreEl.textContent = rdy;
+    scoreEl.style.color = col;
+    bandEl.textContent = bandName(rdy);
+  } else {
+    scoreEl.textContent = "CAL";
+    scoreEl.style.color = COLORS.dim;
+    bandEl.textContent = "BASELINE " + Math.min(loggedDays, 3) + "/3";
+  }
+  bandEl.style.background = hexToRgba(col, 0.14);
+  bandEl.style.color = col;
+
+  const strain = s.strain || 0;
+  document.getElementById("chip-strain").textContent = strain.toFixed(1);
+  document.getElementById("chip-hrv").textContent = t.hrvMs != null ? Math.round(t.hrvMs) : "--";
+  document.getElementById("chip-hrv-sub").textContent =
+    s.hrvDeltaPct != null ? "MS " + (s.hrvDeltaPct >= 0 ? "+" : "") + s.hrvDeltaPct + "%" : "MS";
+  document.getElementById("chip-sleep").textContent =
+    t.sleepTotalMin != null ? fmtMin(t.sleepTotalMin) : "--";
+  document.getElementById("chip-sleep-sub").textContent =
+    s.sleepPerf != null ? s.sleepPerf + "%" : "";
+}
+
+function badgeFor(metric, latest, series) {
+  const win = DB.operator.baselineWindowDays;
+  const mk = (txt, col) => ({ txt, col });
+  if (latest == null) return mk("NO DATA", COLORS.dim);
+
+  if (metric === "hrvMs" || metric === "respiratoryRate" || metric === "restingHR") {
+    const base = isSim() ? meanOf(SIM[metric]) : baselineFor(metric, dayKey(), win);
+    if (!base) return mk("BUILDING", COLORS.dim);
+    const d = latest / base - 1;
+    if (metric === "hrvMs") {
+      if (d < -0.12) return mk("SUPPRESSED", COLORS.red);
+      if (d < -0.06) return mk("BELOW BASE", COLORS.amber);
+      return mk("IN RANGE", COLORS.green);
+    }
+    if (metric === "restingHR") {
+      if (d > 0.05) return mk("ELEVATED", COLORS.amber);
+      return mk("IN RANGE", COLORS.green);
+    }
+    if (Math.abs(d) > 0.08) return mk("ELEVATED", COLORS.amber);
+    return mk("IN RANGE", COLORS.green);
+  }
+  if (metric === "sleepTotalMin") {
+    const pct = latest / DB.operator.targetSleepMinutes;
+    if (pct >= 1) return mk("TARGET MET", COLORS.green);
+    if (pct >= 0.85) return mk("SHORT", COLORS.amber);
+    return mk("LOW", COLORS.red);
+  }
+  if (metric === "systemLoadScore") {
+    if (latest <= 0.1) return mk("REST DAY", COLORS.cyan);
+    const m = meanOf(series.filter(v => v != null && v > 0));
+    if (m && latest > m * 1.4) return mk("SPIKE", COLORS.amber);
+    return mk("STEADY", COLORS.green);
+  }
+  if (metric === "bodyMassKg") {
+    const first = series.find(v => v != null);
+    if (first == null) return mk("BUILDING", COLORS.dim);
+    const d = latest - first;
+    const s = (d >= 0 ? "+" : "") + d.toFixed(1) + "KG 7D";
+    return mk(s, COLORS.cyan);
+  }
+  return mk("", COLORS.dim);
+}
+
+const METRICS = [
+  { field: "hrvMs", label: "HRV", unit: "MS", kind: "line",
+    color: () => COLORS.cyan, fmt: v => Math.round(v) },
+  { field: "restingHR", label: "Resting HR", unit: "BPM", kind: "line",
+    color: () => COLORS.green, fmt: v => Math.round(v) },
+  { field: "sleepTotalMin", label: "Sleep", unit: "H:MM", kind: "bars",
+    color: () => COLORS.amber, fmt: v => fmtMin(v),
+    max: () => DB.operator.targetSleepMinutes * 1.25 },
+  { field: "systemLoadScore", label: "Strain", unit: "/21", kind: "bars",
+    color: () => COLORS.red, fmt: v => v.toFixed(1), max: () => 21 },
+  { field: "bodyMassKg", label: "Mass", unit: "KG", kind: "line",
+    color: () => COLORS.cyan, fmt: v => v.toFixed(1) },
+  { field: "respiratoryRate", label: "Respiration", unit: "/MIN", kind: "line",
+    color: () => COLORS.green, fmt: v => v.toFixed(1) }
+];
+
+function renderMetrics() {
+  const grid = document.getElementById("metrics-grid");
+  const letters = dayLetters();
+  const sim = isSim();
+  grid.innerHTML = "";
+
+  METRICS.forEach(m => {
+    const series = sim ? SIM[m.field].slice() : seriesFor(m.field);
+    const definedVals = series.filter(v => v != null);
+    const latest = definedVals.length ? definedVals[definedVals.length - 1] : null;
+    const color = m.color();
+    const badge = badgeFor(m.field, latest, series);
+    const spark = m.kind === "bars"
+      ? sparkBars(series, color, m.max ? m.max() : null)
+      : sparkLine(series, color);
+
+    const card = document.createElement("div");
+    card.className = "metric-card";
+    card.innerHTML =
+      '<div class="mc-head"><span class="mc-label">' + m.label + "</span>" +
+      '<span class="badge" style="background:' + hexToRgba(badge.col, 0.14) +
+      ";color:" + badge.col + '">' + badge.txt + "</span></div>" +
+      '<div class="mc-value-row"><span class="mc-value" style="color:' + color + '">' +
+      (latest != null ? m.fmt(latest) : "--") + "</span>" +
+      '<span class="mc-unit">' + m.unit + "</span></div>" +
+      spark +
+      '<div class="mc-days">' + letters.map(l => "<span>" + l + "</span>").join("") + "</div>";
+    grid.appendChild(card);
+  });
+}
+
+function renderSleep(t) {
+  const segs = [
+    { key: "sleepDeepMin",  label: "DEEP",  color: "#2456C9" },
+    { key: "sleepREMMin",   label: "REM",   color: COLORS.cyan },
+    { key: "sleepCoreMin",  label: "CORE",  color: "#3B4552" },
+    { key: "sleepAwakeMin", label: "AWAKE", color: COLORS.red }
+  ];
+  const total = segs.reduce((sum, x) => sum + (t[x.key] || 0), 0);
+  document.getElementById("sleep-total").textContent =
+    t.sleepTotalMin != null ? fmtMin(t.sleepTotalMin) : (total ? fmtMin(total) : "--");
+  const track = document.getElementById("sleep-track");
+  const legend = document.getElementById("sleep-legend");
+  track.innerHTML = "";
+  legend.innerHTML = "";
+  segs.forEach(sg => {
+    const v = t[sg.key] || 0;
+    if (total > 0 && v > 0) {
+      const bar = document.createElement("i");
+      bar.style.width = (v / total * 100) + "%";
+      bar.style.background = sg.color;
+      track.appendChild(bar);
+    }
+    const el = document.createElement("span");
+    el.className = "key";
+    el.innerHTML = '<i class="swatch" style="background:' + sg.color + '"></i>' +
+      sg.label + " " + (v ? fmtMin(v) : "--");
+    legend.appendChild(el);
+  });
+}
+
+function renderCommand() {
+  const key = dayKey();
+  const row = DB.telemetry[key];
+  const sim = isSim();
+  const t = row || (sim ? SIM_TODAY : (DB.telemetry[Object.keys(DB.telemetry).sort().pop()] || {}));
+  const s = sim ? SIM_SCORES : computeScores(t, row ? key : "");
+
+  document.querySelectorAll("[data-sim]").forEach(el => { el.hidden = !sim; });
+
+  renderHero(t, s, sim);
+  renderMetrics();
+  renderSleep(t);
+  renderIntel();
+}
+
+/* ============================================================
+   LOG OVERLAY
+   ============================================================ */
+
+const overlay = document.getElementById("log-overlay");
+
+function num(id) {
+  const v = document.getElementById(id).value;
+  if (v === "" || v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function openLog() {
+  const key = dayKey();
+  document.getElementById("log-date").textContent = key;
+  const row = DB.telemetry[key] || {};
+  const set = (id, v) => { document.getElementById(id).value = v != null ? v : ""; };
+  set("in-hrv", row.hrvMs);
+  set("in-rhr", row.restingHR);
+  set("in-resp", row.respiratoryRate);
+  set("in-mass", row.bodyMassKg);
+  set("in-sleep-h", row.sleepTotalMin != null ? Math.floor(row.sleepTotalMin / 60) : null);
+  set("in-sleep-m", row.sleepTotalMin != null ? row.sleepTotalMin % 60 : null);
+  set("in-deep", row.sleepDeepMin);
+  set("in-rem", row.sleepREMMin);
+  set("in-awake", row.sleepAwakeMin);
+  set("in-train-min", row.trainingMinutes);
+  set("in-train-rpe", row.sessionRPE);
+  overlay.classList.add("open");
+}
+
+function saveLog() {
+  const key = dayKey();
+  const h = num("in-sleep-h");
+  const m = num("in-sleep-m");
+  const sleepTotal = (h != null || m != null) ? (h || 0) * 60 + (m || 0) : null;
+  const deep = num("in-deep");
+  const rem = num("in-rem");
+  const awake = num("in-awake");
+  const core = (sleepTotal != null && deep != null && rem != null)
+    ? Math.max(0, sleepTotal - deep - rem)
+    : null;
+
+  const existing = DB.telemetry[key] || {};
+  const row = {
+    ...existing,
+    dayKey: key,
+    hrvMs: num("in-hrv"),
+    hrvMethod: existing.hrvMethod || "rmssd",
+    restingHR: num("in-rhr"),
+    respiratoryRate: num("in-resp"),
+    bodyMassKg: num("in-mass"),
+    sleepTotalMin: sleepTotal,
+    sleepDeepMin: deep,
+    sleepREMMin: rem,
+    sleepCoreMin: core,
+    sleepAwakeMin: awake,
+    trainingMinutes: num("in-train-min"),
+    sessionRPE: num("in-train-rpe"),
+    source: existing.source || "manual",
+    scoreVersion: 2,
+    updatedAt: new Date().toISOString()
+  };
+
+  const s = computeScores(row, key);
+  row.readinessScore = s.readiness;
+  row.systemLoadScore = Math.round(s.strain * 10) / 10;
+
+  DB.telemetry[key] = row;
+  saveDB(DB);
+  overlay.classList.remove("open");
+  renderCommand();
+}
+
+document.getElementById("btn-log").addEventListener("click", openLog);
+document.getElementById("btn-save-log").addEventListener("click", saveLog);
+document.getElementById("btn-cancel-log").addEventListener("click", () => overlay.classList.remove("open"));
+
+/* ============================================================
+   GARMIN UPLINK (silent auto-sync; header dot reports state)
+   ============================================================ */
+
+const SYNC_KEY = "biocommand.sync";
+
+function loadSyncConfig() {
+  try { return JSON.parse(Storage.get(SYNC_KEY)) || null; }
+  catch (e) { return null; }
+}
+function saveSyncConfig(cfg) { Storage.set(SYNC_KEY, JSON.stringify(cfg)); }
+
+function setSyncDot(state) {
+  document.getElementById("sync-dot").className = "sync-dot " + (state || "");
+}
+
+function b64bytes(s) {
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+async function decryptFeed(blob, passphrase) {
+  const enc = new TextEncoder();
+  const baseKey = await crypto.subtle.importKey(
+    "raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: b64bytes(blob.salt),
+      iterations: blob.iter || 210000, hash: "SHA-256" },
+    baseKey, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: b64bytes(blob.nonce) }, key, b64bytes(blob.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+const FEED_FIELDS = [
+  "hrvMs", "hrvMethod", "restingHR", "respiratoryRate",
+  "sleepTotalMin", "sleepDeepMin", "sleepREMMin", "sleepCoreMin",
+  "sleepAwakeMin", "steps", "activeEnergyKcal", "basalEnergyKcal",
+  "trainingMinutes", "trainingAvgHR", "bodyMassKg"
+];
+
+function mergeFeedDay(key, feedRow) {
+  const existing = DB.telemetry[key] || { dayKey: key };
+  const merged = { ...existing };
+  FEED_FIELDS.forEach(f => {
+    if (feedRow[f] != null) merged[f] = feedRow[f];
+  });
+  merged.dayKey = key;
+  merged.source = "garmin";
+  merged.scoreVersion = 2;
+  merged.updatedAt = new Date().toISOString();
+  DB.telemetry[key] = merged;
+}
+
+function setUplinkStatus(msg, tone) {
+  const el = document.getElementById("uplink-status");
+  el.textContent = msg;
+  el.style.color = tone === "err" ? COLORS.red
+                 : tone === "ok" ? COLORS.green : "";
+}
+
+async function syncNow() {
+  const cfg = loadSyncConfig();
+  if (!cfg || !cfg.pass) {
+    setUplinkStatus("Uplink not configured. Set the passphrase and save.", "err");
+    return;
+  }
+  if (!window.crypto || !crypto.subtle) {
+    setUplinkStatus("Crypto unavailable. Serve over HTTPS.", "err");
+    setSyncDot("err");
+    return;
+  }
+  const url = cfg.url || "data/telemetry.enc";
+  setSyncDot("busy");
+  setUplinkStatus("Syncing...");
+  let blob;
+  try {
+    const res = await fetch(url + (url.includes("?") ? "&" : "?") + "t=" + Date.now(),
+      { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    blob = await res.json();
+  } catch (e) {
+    setUplinkStatus("Feed fetch failed: " + e.message, "err");
+    setSyncDot("err");
+    return;
+  }
+  let payload;
+  try {
+    payload = await decryptFeed(blob, cfg.pass);
+  } catch (e) {
+    setUplinkStatus("Decrypt failed. Check the passphrase.", "err");
+    setSyncDot("err");
+    return;
+  }
+  const days = payload.days || {};
+  const keys = Object.keys(days).sort();
+  keys.forEach(k => mergeFeedDay(k, days[k]));
+  keys.forEach(k => {
+    const r = DB.telemetry[k];
+    const sc = computeScores(r, k);
+    r.readinessScore = sc.readiness;
+    r.systemLoadScore = Math.round(sc.strain * 10) / 10;
+  });
+  cfg.lastSync = new Date().toISOString();
+  saveSyncConfig(cfg);
+  saveDB(DB);
+  renderCommand();
+  renderUplink();
+  setUplinkStatus("Synced " + keys.length + " day(s). Feed " + (payload.generatedAt || "?"), "ok");
+  setSyncDot("ok");
+}
+
+function renderUplink() {
+  const cfg = loadSyncConfig();
+  document.getElementById("up-url").value = (cfg && cfg.url) || "";
+  document.getElementById("up-pass").value = (cfg && cfg.pass) || "";
+  const last = document.getElementById("uplink-last");
+  last.textContent = cfg && cfg.lastSync
+    ? "LAST " + cfg.lastSync.slice(5, 16).replace("T", " ")
+    : "";
+}
+
+document.getElementById("btn-save-uplink").addEventListener("click", () => {
+  const cfg = loadSyncConfig() || {};
+  cfg.url = document.getElementById("up-url").value.trim();
+  cfg.pass = document.getElementById("up-pass").value;
+  saveSyncConfig(cfg);
+  renderUplink();
+  setUplinkStatus("Saved. Auto-sync runs each time the app opens.", "ok");
+});
+
+document.getElementById("btn-sync").addEventListener("click", syncNow);
+
+/* ============================================================
+   ADVISOR (brief on Today; key management in SYS)
+   ============================================================ */
+
+const AI_KEY = "biocommand.ai";
+
+function loadAI() {
+  try { return JSON.parse(Storage.get(AI_KEY)) || null; }
+  catch (e) { return null; }
+}
+function saveAI(cfg) { Storage.set(AI_KEY, JSON.stringify(cfg)); }
+
+function setAdvisorStatus(msg, tone) {
+  const el = document.getElementById("advisor-status");
+  el.textContent = msg;
+  el.style.color = tone === "err" ? COLORS.red : tone === "ok" ? COLORS.green : "";
+  document.getElementById("advisor-dot").style.color =
+    tone === "ok" ? COLORS.green : tone === "err" ? COLORS.red : COLORS.dim;
+}
+
+function buildDigest() {
+  const keys = Object.keys(DB.telemetry).sort();
+  const recent = keys.slice(-14).map(k => {
+    const r = DB.telemetry[k];
+    return {
+      d: k, hrv: r.hrvMs ?? null, rhr: r.restingHR ?? null,
+      slp: r.sleepTotalMin ?? null, deep: r.sleepDeepMin ?? null,
+      rem: r.sleepREMMin ?? null, strain: r.systemLoadScore ?? null,
+      rdy: r.readinessScore ?? null, mass: r.bodyMassKg ?? null,
+      trainMin: r.trainingMinutes ?? null
+    };
+  });
+  return {
+    date: dayKey(),
+    daysInStore: keys.length,
+    targets: {
+      sleepMin: DB.operator.targetSleepMinutes,
+      baselineWindowDays: DB.operator.baselineWindowDays,
+      massKg: DB.operator.targetBodyMassKg
+    },
+    baselines: {
+      hrv: baselineFor("hrvMs", dayKey(), DB.operator.baselineWindowDays),
+      rhr: baselineFor("restingHR", dayKey(), DB.operator.baselineWindowDays)
+    },
+    intelFlags: buildIntel().map(f => f.msg),
+    last14: recent
+  };
+}
+
+const ADVISOR_SYSTEM =
+  "You are the Bio-Command Advisor, a performance coach embedded in a personal " +
+  "health dashboard. You receive the operator's wearable telemetry digest as JSON " +
+  "(HRV in ms RMSSD, resting HR, sleep minutes, strain 0-21 from session RPE x " +
+  "minutes, readiness 0-100 vs rolling baseline). Ground every statement in the " +
+  "numbers provided and never invent data. Give specific, actionable direction on " +
+  "training load, sleep and recovery, with the single highest-leverage action first. " +
+  "If the dataset is thin, say so plainly and scale your confidence down. You are " +
+  "not a medical professional: no diagnoses, no medication or dosing advice, and " +
+  "for symptoms or health concerns tell the operator to see a clinician. Under 220 " +
+  "words. UK English. Terse command-brief tone, short lines, plain text, no markdown.";
+
+async function callAdvisor(userText) {
+  const cfg = loadAI();
+  if (!cfg || !cfg.key) throw new Error("SET KEY IN SYS");
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": cfg.key,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 700,
+      system: ADVISOR_SYSTEM,
+      messages: [{ role: "user", content: userText }]
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const msg = (data && data.error && data.error.message) || ("HTTP " + res.status);
+    throw new Error(msg);
+  }
+  return (data.content || [])
+    .filter(b => b.type === "text")
+    .map(b => b.text)
+    .join("\n")
+    .trim();
+}
+
+function showBrief(text) {
+  const out = document.getElementById("brief-out");
+  out.textContent = text;
+  out.classList.add("show");
+}
+
+async function generateBriefing() {
+  const k = dayKey();
+  if (DB.briefings[k]) {
+    showBrief(DB.briefings[k]);
+    setAdvisorStatus("CACHED " + k, "ok");
+    return;
+  }
+  try {
+    setAdvisorStatus("ANALYZING...");
+    const text = await callAdvisor(
+      "DAILY BRIEFING REQUEST. TELEMETRY DIGEST:\n" + JSON.stringify(buildDigest()));
+    DB.briefings[k] = text;
+    saveDB(DB);
+    showBrief(text);
+    setAdvisorStatus("BRIEFED " + k, "ok");
+  } catch (e) {
+    setAdvisorStatus("OFFLINE: " + e.message, "err");
+  }
+}
+
+async function askAdvisor() {
+  const q = document.getElementById("ai-q").value.trim();
+  if (!q) return;
+  try {
+    setAdvisorStatus("ANALYZING...");
+    const text = await callAdvisor(
+      "OPERATOR QUESTION: " + q +
+      "\nTELEMETRY DIGEST:\n" + JSON.stringify(buildDigest()));
+    showBrief(text);
+    setAdvisorStatus("ANSWERED", "ok");
+  } catch (e) {
+    setAdvisorStatus("OFFLINE: " + e.message, "err");
+  }
+}
+
+document.getElementById("btn-save-ai").addEventListener("click", () => {
+  const key = document.getElementById("ai-key").value.trim();
+  const st = document.getElementById("advisor-key-status");
+  if (!key) { st.textContent = "ENTER A KEY FIRST"; st.style.color = COLORS.red; return; }
+  saveAI({ key: key });
+  st.textContent = "KEY SAVED ON DEVICE"; st.style.color = COLORS.green;
+  setAdvisorStatus("READY");
+});
+
+document.getElementById("btn-brief").addEventListener("click", generateBriefing);
+document.getElementById("btn-brief-jump").addEventListener("click", () => {
+  document.getElementById("advisor-card").scrollIntoView({ behavior: "smooth", block: "start" });
+  generateBriefing();
+});
+document.getElementById("btn-ask").addEventListener("click", askAdvisor);
+
+(function initAdvisor() {
+  const cfg = loadAI();
+  if (cfg && cfg.key) {
+    document.getElementById("ai-key").value = cfg.key;
+    setAdvisorStatus("READY");
+    const cached = DB.briefings[dayKey()];
+    if (cached) { showBrief(cached); }
+  } else {
+    setAdvisorStatus("SET KEY IN SYS");
+  }
+})();
+
+/* ============================================================
+   DATA CARD (SYS): store status, export / import / wipe
+   ============================================================ */
+
+function renderDataCard() {
+  document.getElementById("store-desc").textContent = Storage.persistent
+    ? "Persistent local store active. Export regularly as backup."
+    : "Volatile store (sandboxed preview). Data clears on reload. Open in Safari or host to persist.";
+  const bytes = (Storage.get(DB_KEY) || "").length;
+  document.getElementById("db-size").textContent = "DB " + bytes + " B";
+}
+
+document.getElementById("btn-export").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(DB, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "biocommand-backup-" + dayKey() + ".json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+document.getElementById("btn-import").addEventListener("click", () => {
+  document.getElementById("import-file").click();
+});
+
+document.getElementById("import-file").addEventListener("change", (ev) => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const incoming = JSON.parse(reader.result);
+      if (!incoming || incoming.version !== 1) {
+        alert("Import rejected: unsupported DB version.");
+        return;
+      }
+      incoming.briefings = incoming.briefings || {};
+      DB = incoming;
+      saveDB(DB);
+      renderCommand();
+    } catch (e) {
+      alert("Import rejected: file is not valid Bio-Command JSON.");
+    }
+  };
+  reader.readAsText(file);
+  ev.target.value = "";
+});
+
+document.getElementById("btn-wipe").addEventListener("click", () => {
+  if (confirm("Wipe local DB? This deletes all logged data on this device.")) {
+    Storage.remove(DB_KEY);
+    DB = emptyDB();
+    saveDB(DB);
+    renderCommand();
+  }
+});
+
+/* ============================================================
+   SHELL: tabs, SYS, header, theme
+   ============================================================ */
+
+function showView(id) {
+  document.querySelectorAll("section.view").forEach(v => v.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  document.querySelectorAll("nav.tabbar button").forEach(b =>
+    b.classList.toggle("active", b.dataset.view === id));
+  window.scrollTo(0, 0);
+}
+
+document.querySelectorAll("nav.tabbar button").forEach(btn => {
+  btn.addEventListener("click", () => showView(btn.dataset.view));
+});
+document.getElementById("btn-sys").addEventListener("click", () => showView("view-sys"));
+
+(function initHeader() {
+  const now = new Date();
+  const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  document.getElementById("hdr-date").textContent =
+    String(now.getDate()).padStart(2, "0") + " " + months[now.getMonth()];
+})();
+
+const THEME_KEY = "biocommand.theme";
+const metaTheme = document.getElementById("meta-theme");
+const btnTheme = document.getElementById("btn-theme");
+
+function applyTheme(mode) {
+  if (mode === "light") {
+    document.documentElement.dataset.theme = "light";
+  } else {
+    delete document.documentElement.dataset.theme;
+  }
+  metaTheme.setAttribute("content", mode === "light" ? "#EFF2F5" : "#0D0F12");
+  btnTheme.textContent = mode === "light" ? "DAY" : "NIGHT";
+  COLORS = readColors();
+  renderCommand();
+}
+
+btnTheme.addEventListener("click", () => {
+  const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+  Storage.set(THEME_KEY, next);
+  applyTheme(next);
+});
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+
+renderUplink();
+renderDataCard();
+applyTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
+if (loadSyncConfig() && (loadSyncConfig() || {}).pass) {
+  syncNow();
+}
+</script>
+</body>
+</html>
