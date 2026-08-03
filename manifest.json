@@ -1,0 +1,42 @@
+{
+  "name": "Bio-Command",
+  "short_name": "BIO-CMD",
+  "description": "Tactical health dashboard. Recovery, strain, nutrition, training and biomarker telemetry.",
+  "start_url": "/bio-command/",
+  "scope": "/bio-command/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0D0F12",
+  "background_color": "#0D0F12",
+  "categories": ["health", "fitness"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Log Telemetry",
+      "short_name": "Log",
+      "url": "/bio-command/?action=log",
+      "description": "Quickly log this morning's telemetry"
+    },
+    {
+      "name": "Log a Meal",
+      "short_name": "Fuel",
+      "url": "/bio-command/?tab=fuel",
+      "description": "Log what you just ate"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

@@ -9,6 +9,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BIO-COMMAND">
 <title>BIO-COMMAND</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 /* Theme bootstrap: runs before CSS paint to avoid a dark flash in day mode */
 try {
@@ -667,14 +670,199 @@ html[data-theme="light"] nav.tabbar button.active { background: rgba(0, 136, 174
   font-variant-numeric: tabular-nums; margin-right: auto;
 }
 .pr-line { color: var(--green); }
+
+/* ---------- Fuel module ---------- */
+
+.macro-bar-row { margin-bottom: 12px; }
+.macro-bar-head { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--text-2); margin-bottom: 5px; }
+.macro-bar-track { height: 8px; background: var(--tac-raised); border-radius: 4px; overflow: hidden; }
+.macro-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+
+.meal-slot-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--tac-surface); border: 1px solid var(--tac-border); border-radius: var(--r-input);
+  padding: 11px 13px;
+}
+.meal-slot-row.consumed { opacity: 0.6; }
+.meal-slot-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; color: var(--text-3); text-transform: uppercase; width: 62px; flex: none; }
+.meal-slot-select {
+  flex: 1; background: var(--tac-raised); border: 1px solid var(--tac-border); border-radius: 8px;
+  color: var(--text-1); font-family: var(--mono); font-size: 12px; padding: 8px; min-height: 38px;
+}
+.meal-slot-macro { font-family: var(--mono); font-size: 10px; color: var(--text-3); width: 64px; flex: none; text-align: right; }
+.meal-slot-check {
+  width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--tac-border);
+  background: transparent; color: var(--text-3); font-family: var(--mono); font-size: 13px; cursor: pointer; flex: none;
+}
+.meal-slot-row.consumed .meal-slot-check { background: var(--green); border-color: var(--green); color: #0D0F12; }
+
+.template-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--tac-surface); border: 1px solid var(--tac-border); border-radius: var(--r-input);
+  padding: 10px 13px; font-family: var(--mono); font-size: 11px;
+}
+.template-row .tmpl-name { flex: 1; color: var(--text-1); }
+.template-row .tmpl-macro { color: var(--text-3); font-size: 10px; }
+
+.manifest-line { font-family: var(--mono); font-size: 11px; color: var(--text-2); padding: 5px 0; border-top: 1px solid var(--tac-border); }
+.manifest-line:first-child { border-top: none; }
+
+/* ---------- Bio module ---------- */
+
+.marker-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--tac-surface); border: 1px solid var(--tac-border); border-radius: var(--r-card);
+  padding: 13px 14px;
+}
+.marker-info { flex: 1; min-width: 0; }
+.marker-name { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text-1); }
+.marker-cat { font-family: var(--mono); font-size: 9px; color: var(--text-3); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 2px; }
+.marker-value-col { text-align: right; flex: none; }
+.marker-value { font-family: var(--mono); font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.marker-unit { font-family: var(--mono); font-size: 9px; color: var(--text-3); }
+.marker-age { font-family: var(--mono); font-size: 9px; color: var(--text-3); margin-top: 3px; }
+
+.range-caption { font-family: var(--mono); font-size: 10px; color: var(--text-2); line-height: 1.7; }
+.log-history-row {
+  display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px;
+  color: var(--text-2); padding: 7px 0; border-top: 1px solid var(--tac-border);
+}
+.log-history-row:first-child { border-top: none; }
+
+/* ---------- Cloud sync indicator ---------- */
+.cloud-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--text-3); display: inline-block; margin-right: 6px;
+}
+.cloud-dot.synced { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.cloud-dot.syncing { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); animation: pulse 1s ease-in-out infinite; }
+.cloud-dot.error  { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+.cloud-dot.offline { background: var(--text-3); }
+
+/* ---------- Auth / Supabase card ---------- */
+.auth-signed-in { display: flex; align-items: center; gap: 8px; }
+.auth-email { font-family: var(--mono); font-size: 11px; color: var(--text-1); flex: 1; }
+
+/* ---------- Onboarding overlay ---------- */
+.onboard-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  background: var(--tac-base);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--gutter);
+}
+.onboard-inner { max-width: 480px; width: 100%; }
+.onboard-step { display: none; }
+.onboard-step.active { display: block; }
+.onboard-title { font-family: var(--mono); font-size: 22px; font-weight: 650; color: var(--text-1); margin-bottom: 8px; }
+.onboard-sub { font-family: var(--mono); font-size: 12px; color: var(--text-2); line-height: 1.7; margin-bottom: 22px; }
+.onboard-actions { display: flex; gap: 8px; flex-direction: column; }
+.step-dots { display: flex; gap: 6px; justify-content: center; margin-top: 16px; }
+.step-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); }
+.step-dot.active { background: var(--cyan); }
+
+/* ---------- Tab notification badge ---------- */
+nav.tabbar button { position: relative; }
+.tab-badge {
+  position: absolute; top: 4px; right: 14px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--amber); display: none;
+}
+.tab-badge.show { display: block; }
+
+/* ---------- Card entrance animation ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .hud-card, .metric-card { animation: fadeUp 0.2s ease both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+}
+
+/* ---------- Notification permission card ---------- */
+.notif-card { display: flex; align-items: center; gap: 12px; }
+.notif-icon { font-size: 24px; flex: none; }
+.notif-text { flex: 1; font-family: var(--mono); font-size: 11px; color: var(--text-2); line-height: 1.6; }
+
+/* ---------- Protocol module ---------- */
+
+.proto-row { display: flex; align-items: center; gap: 12px; }
+.proto-name { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text-1); }
+.proto-meta { font-family: var(--mono); font-size: 10px; color: var(--text-3); margin-top: 3px; line-height: 1.5; }
+.proto-meta .corr-pos { color: var(--green); }
+.proto-meta .corr-neg { color: var(--red); }
+.day-toggle-row { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+.day-toggle {
+  width: 38px; height: 34px; border-radius: 8px; border: 1px solid var(--tac-border);
+  background: transparent; color: var(--text-3); font-family: var(--mono); font-size: 10px; cursor: pointer;
+}
+.day-toggle.active { background: var(--cyan); border-color: var(--cyan); color: #0D0F12; }
+
+/* ---------- Journal (PROTO + Command card) ---------- */
+.journal-card { display: flex; flex-direction: column; gap: 8px; }
+.jq-row { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 11px; color: var(--text-1); }
+.jq-q { flex: 1; }
+.jq-opts { display: flex; gap: 6px; }
+.jq-btn {
+  appearance: none; padding: 6px 13px; border-radius: var(--r-chip);
+  border: 1px solid var(--tac-border); background: transparent;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; cursor: pointer;
+}
+.jq-btn:active, .jq-btn.sel { border-color: var(--cyan); color: var(--cyan); }
+.journal-note {
+  appearance: none; width: 100%; background: var(--tac-raised); border: 1px solid var(--tac-border);
+  border-radius: var(--r-input); color: var(--text-1); font-family: var(--sans); font-size: 14px;
+  padding: 11px; min-height: 72px; resize: none;
+}
+.journal-note:focus { outline: none; border-color: var(--cyan); }
+.j-streak { font-family: var(--mono); font-size: 10px; color: var(--text-3); letter-spacing: 0.08em; }
+.insight-row { font-family: var(--mono); font-size: 11px; color: var(--text-2); padding: 7px 0; border-top: 1px solid var(--tac-border); }
+.insight-row:first-child { border-top: none; }
+
+/* ---------- Fuel v2 (Cal AI style) ---------- */
+.macro-ring-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+.macro-ring-tile { text-align: center; padding: 10px 4px 8px; background: var(--tac-raised); border-radius: var(--r-input); }
+.macro-ring-val { font-family: var(--mono); font-size: 19px; font-weight: 650; font-variant-numeric: tabular-nums; display: block; }
+.macro-ring-lbl { font-family: var(--mono); font-size: 8px; letter-spacing: 0.1em; color: var(--text-3); text-transform: uppercase; margin-top: 4px; }
+.macro-ring-pct { font-family: var(--mono); font-size: 9px; margin-top: 2px; }
+
+.log-input-row { display: flex; gap: 8px; margin-top: 6px; }
+.log-input-row .tac-input { flex: 1; font-size: 14px; }
+
+.logged-meal-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--tac-surface); border: 1px solid var(--tac-border); border-radius: var(--r-input);
+  padding: 11px 13px;
+}
+.lm-name { flex: 1; font-family: var(--mono); font-size: 12px; color: var(--text-1); }
+.lm-macro { font-family: var(--mono); font-size: 10px; color: var(--text-3); }
+.lm-del { background: transparent; border: 0; color: var(--text-3); font-size: 18px; cursor: pointer; padding: 0 4px; }
+.lm-del:active { color: var(--red); }
+
+.goal-chip {
+  padding: 8px 16px; border-radius: var(--r-chip);
+  border: 1px solid var(--tac-border); background: transparent;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; cursor: pointer;
+  color: var(--text-2);
+}
+.goal-chip.active { border-color: var(--cyan); color: var(--cyan); background: rgba(47,215,255,0.08); }
+html[data-theme="light"] .goal-chip.active { background: rgba(0,136,174,0.08); }
+
+.ai-thinking {
+  font-family: var(--mono); font-size: 11px; color: var(--text-3); letter-spacing: 0.08em;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity:0.4 } 50% { opacity:1 } }
+
+.meal-plan-day { margin-bottom: 14px; }
+.meal-plan-day-head { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; color: var(--text-3); margin-bottom: 6px; text-transform: uppercase; }
+.meal-plan-item { font-family: var(--mono); font-size: 12px; color: var(--text-2); padding: 5px 0; border-top: 1px solid var(--tac-border); }
+.meal-plan-item:first-of-type { border-top: none; }
 .overlay-inner { max-width: 560px; margin: 0 auto; }
 </style>
 </head>
 <body>
 
 <header class="console">
-  <div class="sys-id">BIO-COMMAND <span class="ver">v0.13</span></div>
+  <div class="sys-id">BIO-COMMAND <span class="ver">v1.0</span></div>
   <div class="hdr-right">
+    <span class="cloud-dot" id="hdr-cloud-dot" title="Cloud sync" style="width:7px;height:7px;"></span>
     <span class="sync-dot" id="sync-dot" title="Garmin uplink"></span>
     <span id="hdr-date"></span>
     <button class="mode-btn" id="btn-theme" aria-label="Toggle day and night theme">NIGHT</button>
@@ -768,6 +956,17 @@ html[data-theme="light"] nav.tabbar button.active { background: rgba(0, 136, 174
       <div class="intel-list" id="intel-list"></div>
     </div>
 
+    <!-- Daily journal card (Whoop-style morning check-in) -->
+    <div class="hud-card span-2" id="cmd-journal-card">
+      <div class="card-head">
+        <span class="status-dot" id="journal-cmd-dot" style="color: var(--amber)"></span>
+        <span class="hud-label">Morning Journal</span>
+        <span class="spacer"></span>
+        <span class="j-streak" id="journal-streak"></span>
+      </div>
+      <div class="journal-card" id="cmd-journal-body"></div>
+    </div>
+
     <!-- Advisor brief (output only; key lives in SYS) -->
     <div class="hud-card span-2" id="advisor-card">
       <div class="card-head">
@@ -803,30 +1002,225 @@ html[data-theme="light"] nav.tabbar button.active { background: rgba(0, 136, 174
     </div>
   </section>
 
-  <!-- ================= STUB VIEWS ================= -->
+  <!-- ================= FUEL ================= -->
   <section class="view" id="view-fuel">
-    <div class="hud-card module-pending span-2">
-      <div class="hud-label">Fuel Engine</div>
-      <div class="telemetry cap" style="margin-top:8px;">MODULE OFFLINE // BUILDS IN SECTION 4</div>
+
+    <!-- Macro ring summary -->
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="hud-label">Today</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3" id="fuel-adjust-note"></span>
+        <button class="tac-btn" id="btn-fuel-goal" style="min-height:30px; padding:5px 11px; margin-left:8px;" title="Set goal and edit plan">Goal</button>
+      </div>
+      <div class="macro-ring-row" id="fuel-macro-tiles"></div>
     </div>
+
+    <!-- AI Quick Log (Cal AI style text input) -->
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="status-dot" style="color:var(--green)"></span>
+        <span class="hud-label">Quick Log</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3">DESCRIBE YOUR MEAL</span>
+      </div>
+      <div class="telemetry cap t3" style="margin-bottom:8px;">Type anything. "Big Mac and fries", "steak, chips and salad restaurant portion", "protein shake 30g whey with oat milk".</div>
+      <div class="log-input-row">
+        <input class="tac-input" id="fuel-log-input" type="text" placeholder="What did you eat?"
+               autocapitalize="off" autocorrect="off" style="font-size:14px;">
+        <button class="tac-btn primary" id="btn-fuel-log">Log</button>
+      </div>
+      <div class="telemetry cap t3" id="fuel-log-status" style="margin-top:6px;"></div>
+    </div>
+
+    <!-- Today's logged meals -->
+    <div class="span-2">
+      <div class="card-head" style="margin-bottom:9px; padding:0 2px;">
+        <span class="hud-label">Today's Log</span>
+      </div>
+      <div id="meal-log-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+
+    <!-- AI Meal Planner -->
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="status-dot" style="color:var(--amber)"></span>
+        <span class="hud-label">AI Meal Planner</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3">USES YOUR DATA</span>
+      </div>
+      <div class="telemetry cap t3" style="margin-bottom:10px;">Generates a full week of meals based on your body stats, Garmin expenditure, and goal. Add preferences below.</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;" id="goal-chips">
+        <button class="goal-chip active" data-goal="fat_loss">Fat Loss</button>
+        <button class="goal-chip" data-goal="muscle_gain">Muscle Gain</button>
+        <button class="goal-chip" data-goal="maintain">Maintain</button>
+        <button class="goal-chip" data-goal="recomp">Recomp</button>
+      </div>
+      <input class="tac-input" id="meal-plan-prefs" type="text"
+             placeholder="Preferences, dislikes, cuisines... (optional)"
+             style="font-size:13px; margin-bottom:10px;" autocapitalize="off">
+      <button class="tac-btn primary" id="btn-gen-plan" style="width:100%;">Generate Week Plan</button>
+      <div id="meal-plan-out" style="margin-top:12px;"></div>
+    </div>
+
+    <!-- Shopping manifest -->
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="hud-label">Shopping Manifest</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3">THIS WEEK</span>
+      </div>
+      <div id="shopping-manifest"></div>
+    </div>
+
+    <!-- Templates (secondary) -->
+    <div class="span-2" style="margin-top:2px;">
+      <div class="card-head" style="margin-bottom:9px; padding:0 2px;">
+        <span class="hud-label" style="flex:1;">Saved Templates</span>
+        <button class="tac-btn primary" id="btn-new-meal" style="min-height:34px; padding:7px 14px;">New</button>
+      </div>
+      <div id="template-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+
   </section>
 
+  <!-- ================= BIO ================= -->
+  <!-- ================= BIO ================= -->
   <section class="view" id="view-bio">
-    <div class="hud-card module-pending span-2">
-      <div class="hud-label">Biomarker Telemetry</div>
-      <div class="telemetry cap" style="margin-top:8px;">MODULE OFFLINE // BUILDS IN SECTION 5</div>
+    <!-- AI import card -->
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="status-dot" style="color:var(--cyan)"></span>
+        <span class="hud-label">AI Import</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3">PASTE LAB RESULTS</span>
+      </div>
+      <div class="telemetry cap t3" style="margin-bottom:8px;">Paste the raw text from your lab report, NHS results email, or blood panel PDF. Claude reads it and auto-fills all recognised markers.</div>
+      <textarea class="tac-input" id="bio-ai-paste" rows="4"
+        style="text-align:left; font-size:13px; resize:vertical; min-height:80px; margin-bottom:10px;"
+        placeholder="Testosterone 18.2 nmol/L&#10;HDL 1.4 mmol/L&#10;CRP 0.8 mg/L&#10;...or paste the full PDF text"></textarea>
+      <div class="btn-row">
+        <button class="tac-btn primary" id="btn-bio-ai-import" style="flex:2;">Import with AI</button>
+        <button class="tac-btn" id="btn-bio-ai-clear" style="flex:1;">Clear</button>
+      </div>
+      <div class="telemetry cap t3" id="bio-import-status" style="margin-top:8px;"></div>
     </div>
+
+    <div class="span-2" style="padding:0 2px;">
+      <span class="telemetry cap t3">Reference ranges are general lab defaults, not a diagnosis. Optimal bands reflect commonly cited wellness targets, not universal clinical consensus. Talk to a clinician about your own results.</span>
+    </div>
+    <div id="marker-list" class="span-2" style="display:flex; flex-direction:column; gap:9px; margin-top:10px;"></div>
   </section>
 
+  <!-- ================= PROTO ================= -->
   <section class="view" id="view-proto">
-    <div class="hud-card module-pending span-2">
-      <div class="hud-label">Protocol Directives</div>
-      <div class="telemetry cap" style="margin-top:8px;">MODULE OFFLINE // BUILDS IN SECTION 6</div>
+    <div class="span-2" style="display:flex; align-items:center; gap:8px; padding:0 2px;">
+      <span class="hud-label" style="flex:1;">Today's Protocol</span>
+      <button class="tac-btn primary" id="btn-new-protocol" style="min-height:34px; padding:7px 14px;">New</button>
+    </div>
+    <div id="protocol-list" class="span-2" style="display:flex; flex-direction:column; gap:9px;"></div>
+
+    <!-- Journal full view on PROTO tab -->
+    <div class="hud-card span-2" style="margin-top:6px;">
+      <div class="card-head">
+        <span class="status-dot" style="color:var(--amber)"></span>
+        <span class="hud-label">Journal</span>
+        <span class="spacer"></span>
+        <span class="j-streak" id="proto-journal-streak"></span>
+      </div>
+      <div class="journal-card" id="proto-journal-body" style="margin-bottom:12px;"></div>
+    </div>
+
+    <!-- Behavior insights (correlations) -->
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="status-dot" style="color:var(--green)"></span>
+        <span class="hud-label">Behavior Insights</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3">RECOVERY CORRELATION</span>
+      </div>
+      <div id="behavior-insights"></div>
+    </div>
+
+    <!-- 7-day journal history -->
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="hud-label">Journal History</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3">LAST 7 DAYS</span>
+      </div>
+      <div id="journal-history"></div>
     </div>
   </section>
 
   <!-- ================= SYS (settings, via header) ================= -->
   <section class="view" id="view-sys">
+
+    <!-- Cloud sync (Supabase) -->
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="cloud-dot" id="cloud-dot"></span>
+        <span class="hud-label">Cloud Sync</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3" id="cloud-status-lbl">Not configured</span>
+      </div>
+      <div id="cloud-auth-ui">
+        <div class="form-grid">
+          <div class="full">
+            <label class="hud-label field-lbl" for="sb-url">Supabase project URL</label>
+            <input class="tac-input" id="sb-url" type="url" placeholder="https://xxxx.supabase.co"
+                   autocapitalize="off" autocorrect="off" spellcheck="false">
+          </div>
+          <div class="full">
+            <label class="hud-label field-lbl" for="sb-key">Anon key</label>
+            <input class="tac-input" id="sb-key" type="password" placeholder="eyJhbGci..."
+                   autocapitalize="off" autocorrect="off" spellcheck="false">
+          </div>
+          <div class="full btn-row" style="margin-top:2px;">
+            <button class="tac-btn primary" id="btn-sb-save" style="flex:2;">Save & connect</button>
+          </div>
+          <div class="full" id="cloud-email-row" style="display:none;">
+            <label class="hud-label field-lbl" for="sb-email">Your email (for magic link sign-in)</label>
+            <input class="tac-input" id="sb-email" type="email" placeholder="you@example.com"
+                   autocapitalize="off" autocorrect="off">
+          </div>
+          <div class="full btn-row" id="cloud-signin-row" style="display:none; margin-top:2px;">
+            <button class="tac-btn primary" id="btn-sb-signin" style="flex:2;">Send magic link</button>
+            <button class="tac-btn danger" id="btn-sb-clear" style="flex:1;">Disconnect</button>
+          </div>
+          <div class="full telemetry cap t3" id="cloud-msg"></div>
+        </div>
+      </div>
+      <div id="cloud-signed-in-ui" style="display:none;">
+        <div class="auth-signed-in">
+          <span class="cloud-dot synced"></span>
+          <span class="auth-email" id="cloud-user-email"></span>
+          <button class="tac-btn" id="btn-cloud-sync" style="min-height:32px; padding:5px 12px;">Sync now</button>
+          <button class="tac-btn danger" id="btn-sb-signout" style="min-height:32px; padding:5px 12px;">Sign out</button>
+        </div>
+        <div class="telemetry cap t3" id="cloud-last-sync" style="margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="status-dot" id="notif-status-dot" style="color: var(--text-3)"></span>
+        <span class="hud-label">Notifications</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3" id="notif-status-lbl"></span>
+      </div>
+      <div class="notif-card">
+        <span class="notif-icon">&#x1F514;</span>
+        <div class="notif-text">
+          Morning journal reminder at 08:30, red recovery alerts, and protocol nudges. Works on iOS 16.4+ when installed to the home screen.
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="tac-btn primary" id="btn-notif-enable" style="flex:1;">Enable notifications</button>
+      </div>
+      <div class="telemetry cap t3" style="margin-top:8px;" id="notif-detail"></div>
+    </div>
 
     <div class="hud-card span-2">
       <div class="card-head">
@@ -1001,6 +1395,196 @@ html[data-theme="light"] nav.tabbar button.active { background: rgba(0, 136, 174
   </div>
 </div>
 
+<div class="overlay" id="fuel-plan-overlay">
+  <div class="overlay-inner">
+    <div class="card-head" style="margin-bottom:16px;">
+      <span class="status-dot" style="color: var(--amber)"></span>
+      <span class="hud-label">Weekly Fuel Plan</span>
+      <span class="spacer"></span>
+      <button class="tac-btn" id="btn-cancel-fuel-plan" style="min-height:36px; padding:7px 14px;">Cancel</button>
+    </div>
+    <div class="form-grid">
+      <div>
+        <label class="hud-label field-lbl" for="fp-kcal">Base kcal</label>
+        <input class="tac-input" id="fp-kcal" type="number" inputmode="numeric" min="1000" step="50">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="fp-protein">Protein g</label>
+        <input class="tac-input" id="fp-protein" type="number" inputmode="numeric" min="0" step="5">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="fp-carb">Carb g</label>
+        <input class="tac-input" id="fp-carb" type="number" inputmode="numeric" min="0" step="5">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="fp-fat">Fat g</label>
+        <input class="tac-input" id="fp-fat" type="number" inputmode="numeric" min="0" step="5">
+      </div>
+      <div class="full" style="display:flex; align-items:center; gap:10px; margin-top:4px;">
+        <input type="checkbox" id="fp-dynamic" style="width:20px; height:20px;">
+        <label class="hud-label" for="fp-dynamic" style="margin:0;">Dynamic adjustment from Garmin activity</label>
+      </div>
+      <div class="full">
+        <label class="hud-label field-lbl" for="fp-cap">Max daily swing (%)</label>
+        <input class="tac-input" id="fp-cap" type="number" inputmode="numeric" min="0" max="50" step="1">
+      </div>
+      <div class="full telemetry cap t3">
+        When enabled, carbs and fat flex with yesterday's Garmin active energy versus your rolling
+        baseline, capped at this percentage. Protein always stays fixed at your target.
+      </div>
+      <div class="full btn-row" style="margin-top:6px;">
+        <button class="tac-btn primary" id="btn-save-fuel-plan" style="flex:1;">Save plan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="meal-builder-overlay">
+  <div class="overlay-inner">
+    <div class="card-head" style="margin-bottom:16px;">
+      <span class="status-dot" style="color: var(--amber)"></span>
+      <span class="hud-label" id="meal-builder-title">New Template</span>
+      <span class="spacer"></span>
+      <button class="tac-btn" id="btn-cancel-meal" style="min-height:36px; padding:7px 14px;">Cancel</button>
+    </div>
+    <div class="form-grid">
+      <div class="full">
+        <label class="hud-label field-lbl" for="ml-name">Name</label>
+        <input class="tac-input" id="ml-name" type="text" placeholder="Chicken, rice and greens">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="ml-kcal">Kcal</label>
+        <input class="tac-input" id="ml-kcal" type="number" inputmode="numeric" min="0" step="10">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="ml-protein">Protein g</label>
+        <input class="tac-input" id="ml-protein" type="number" inputmode="numeric" min="0" step="1">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="ml-carb">Carb g</label>
+        <input class="tac-input" id="ml-carb" type="number" inputmode="numeric" min="0" step="1">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="ml-fat">Fat g</label>
+        <input class="tac-input" id="ml-fat" type="number" inputmode="numeric" min="0" step="1">
+      </div>
+      <div class="full">
+        <label class="hud-label field-lbl" for="ml-ingredients">Ingredients (one per line, feeds the shopping manifest)</label>
+        <textarea class="tac-input" id="ml-ingredients" rows="4" style="min-height:90px; text-align:left; font-size:13px; resize:vertical;" placeholder="200g chicken breast&#10;150g rice&#10;handful spinach"></textarea>
+      </div>
+      <div class="full telemetry cap t3" id="meal-builder-status"></div>
+      <div class="full btn-row" style="margin-top:6px;">
+        <button class="tac-btn primary" id="btn-save-meal" style="flex:2;">Save template</button>
+        <button class="tac-btn danger" id="btn-delete-meal" style="flex:1; display:none;">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="marker-overlay">
+  <div class="overlay-inner">
+    <div class="card-head" style="margin-bottom:14px;">
+      <span class="status-dot" id="marker-dot" style="color: var(--cyan)"></span>
+      <span class="hud-label" id="marker-title">MARKER</span>
+      <span class="spacer"></span>
+      <button class="tac-btn" id="btn-close-marker" style="min-height:36px; padding:7px 14px;">Close</button>
+    </div>
+
+    <div style="display:flex; align-items:baseline; gap:8px; margin-bottom:6px;">
+      <span class="telemetry" id="marker-latest-value" style="font-size:32px; font-weight:650;">--</span>
+      <span class="telemetry cap t3" id="marker-latest-unit"></span>
+      <span class="badge" id="marker-badge" style="margin-left:auto; display:none;"></span>
+    </div>
+    <div class="range-caption" id="marker-range-caption"></div>
+
+    <div id="marker-chart-wrap" style="margin-top:16px; display:none;">
+      <div class="detail-chart-label">History</div>
+      <div id="marker-chart"></div>
+    </div>
+
+    <div class="hud-label" style="margin-top:18px; margin-bottom:8px;">Log New Result</div>
+    <div class="form-grid">
+      <div>
+        <label class="hud-label field-lbl" for="mk-value">Value</label>
+        <input class="tac-input" id="mk-value" type="number" inputmode="decimal" step="0.1">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="mk-date">Date</label>
+        <input class="tac-input" id="mk-date" type="date">
+      </div>
+      <div class="full">
+        <label class="hud-label field-lbl" for="mk-lab">Lab (optional)</label>
+        <input class="tac-input" id="mk-lab" type="text" placeholder="Quest, LabCorp...">
+      </div>
+      <div class="full" style="display:flex; align-items:center; gap:10px;">
+        <input type="checkbox" id="mk-fasted" style="width:20px; height:20px;">
+        <label class="hud-label" for="mk-fasted" style="margin:0;">Fasted draw</label>
+      </div>
+      <div class="full btn-row" style="margin-top:4px;">
+        <button class="tac-btn primary" id="btn-save-marker-log" style="flex:1;">Save result</button>
+      </div>
+    </div>
+
+    <div class="hud-label" style="margin-top:20px; margin-bottom:8px;">History</div>
+    <div id="marker-history"></div>
+  </div>
+</div>
+
+<div class="overlay" id="protocol-builder-overlay">
+  <div class="overlay-inner">
+    <div class="card-head" style="margin-bottom:16px;">
+      <span class="status-dot" style="color: var(--green)"></span>
+      <span class="hud-label" id="protocol-builder-title">New Directive</span>
+      <span class="spacer"></span>
+      <button class="tac-btn" id="btn-cancel-protocol" style="min-height:36px; padding:7px 14px;">Cancel</button>
+    </div>
+    <div class="form-grid">
+      <div class="full">
+        <label class="hud-label field-lbl" for="pd-name">Name</label>
+        <input class="tac-input" id="pd-name" type="text" placeholder="COLD EXPOSURE">
+      </div>
+      <div class="full">
+        <label class="hud-label field-lbl" for="pd-category">Category</label>
+        <select class="meal-slot-select" id="pd-category" style="width:100%;">
+          <option value="coldExposure">Cold exposure</option>
+          <option value="heat">Heat</option>
+          <option value="supplement">Supplement</option>
+          <option value="sleepHygiene">Sleep hygiene</option>
+          <option value="mobility">Mobility</option>
+          <option value="zone2">Zone 2</option>
+          <option value="mindset">Mindset</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <div class="full">
+        <label class="hud-label field-lbl">Scheduled days</label>
+        <div class="day-toggle-row" id="pd-days">
+          <button class="day-toggle" data-day="0">MON</button>
+          <button class="day-toggle" data-day="1">TUE</button>
+          <button class="day-toggle" data-day="2">WED</button>
+          <button class="day-toggle" data-day="3">THU</button>
+          <button class="day-toggle" data-day="4">FRI</button>
+          <button class="day-toggle" data-day="5">SAT</button>
+          <button class="day-toggle" data-day="6">SUN</button>
+        </div>
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="pd-target">Target (optional)</label>
+        <input class="tac-input" id="pd-target" type="number" inputmode="decimal" step="0.5">
+      </div>
+      <div>
+        <label class="hud-label field-lbl" for="pd-unit">Unit</label>
+        <input class="tac-input" id="pd-unit" type="text" placeholder="min, g...">
+      </div>
+      <div class="full telemetry cap t3" id="protocol-builder-status"></div>
+      <div class="full btn-row" style="margin-top:6px;">
+        <button class="tac-btn primary" id="btn-save-protocol" style="flex:2;">Save directive</button>
+        <button class="tac-btn danger" id="btn-delete-protocol" style="flex:1; display:none;">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="log-overlay">
   <div class="overlay-inner">
     <div class="card-head" style="margin-bottom:18px;">
@@ -1069,11 +1653,11 @@ html[data-theme="light"] nav.tabbar button.active { background: rgba(0, 136, 174
 </div>
 
 <nav class="tabbar">
-  <button data-view="view-command" class="active">CMD</button>
+  <button data-view="view-command" class="active">CMD<span class="tab-badge"></span></button>
   <button data-view="view-training">TRAIN</button>
   <button data-view="view-fuel">FUEL</button>
   <button data-view="view-bio">BIO</button>
-  <button data-view="view-proto">PROTO</button>
+  <button data-view="view-proto">PROTO<span class="tab-badge"></span></button>
 </nav>
 
 <script>
@@ -1141,6 +1725,8 @@ function emptyDB() {
     protocols: [],
     completions: {},
     briefings: {},
+    journal: {},
+    fuelLog: [],
     seededWorkouts: false
   };
 }
@@ -1154,6 +1740,8 @@ function loadDB() {
       db.briefings = db.briefings || {};
       db.workouts = db.workouts || [];
       db.sessions = db.sessions || [];
+      db.journal = db.journal || {};
+      db.fuelLog = db.fuelLog || [];
       if (db.operator && db.operator.maxHR === undefined) db.operator.maxHR = null;
       if (db.seededWorkouts === undefined) db.seededWorkouts = false;
       return db;
@@ -1167,6 +1755,7 @@ function loadDB() {
 function saveDB(db) {
   Storage.set(DB_KEY, JSON.stringify(db));
   renderDataCard();
+  enqueueCloudSync();
 }
 
 let DB = loadDB();
@@ -2099,6 +2688,8 @@ function renderCommand() {
   renderMetrics();
   renderSleep(t);
   renderIntel();
+  renderJournal();
+  renderTabBadges();
 }
 
 /* ============================================================
@@ -3090,6 +3681,1430 @@ document.getElementById("btn-close-exec").addEventListener("click", () => {
   document.getElementById("exec-overlay").classList.remove("open");
 });
 
+/* ============================================================
+   FUEL MODULE
+   Weekly plan (protein fixed, carb/fat flex within a capped
+   percentage off yesterday's Garmin active energy vs baseline).
+   Meal slots assign templates or ad-hoc entries; the shopping
+   manifest aggregates template ingredient lines for the week.
+   ============================================================ */
+
+const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
+
+function weekStartKey(d) {
+  const dt = d ? new Date(d) : new Date();
+  const day = dt.getDay(); // 0 Sun .. 6 Sat
+  const diff = (day === 0 ? -6 : 1) - day; // back up to Monday
+  const monday = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + diff);
+  return dayKey(monday);
+}
+
+function defaultFuelPlan() {
+  const massKg = DB.operator.targetBodyMassKg || 84;
+  const proteinG = Math.round(massKg * DB.operator.targetProteinPerKg);
+  return {
+    baseTargetKcal: 2400, proteinG, carbG: 260, fatG: 75,
+    dynamicAdjustment: true, adjustmentCapPct: 15
+  };
+}
+
+function getOrCreateFuelPlan() {
+  const wk = weekStartKey();
+  if (!DB.fuelPlans[wk]) DB.fuelPlans[wk] = defaultFuelPlan();
+  return DB.fuelPlans[wk];
+}
+
+/* Protein stays fixed at plan target. Carb and fat absorb the
+   kcal swing, scaled proportionally to the plan's own carb:fat
+   gram ratio so the adjustment does not distort the diet shape. */
+function computeAdjustedTargets(plan) {
+  const base = {
+    kcal: plan.baseTargetKcal, proteinG: plan.proteinG,
+    carbG: plan.carbG, fatG: plan.fatG, adjusted: false, note: ""
+  };
+  if (!plan.dynamicAdjustment) return base;
+
+  const today = dayKey();
+  const yesterday = dayKey(new Date(Date.now() - 86400000));
+  const yesterdayRow = DB.telemetry[yesterday];
+  const baseline = baselineFor("activeEnergyKcal", today, DB.operator.baselineWindowDays);
+  if (!yesterdayRow || yesterdayRow.activeEnergyKcal == null || !baseline) {
+    return { ...base, note: "No Garmin activity baseline yet. Using base targets." };
+  }
+
+  const capKcal = plan.baseTargetKcal * (plan.adjustmentCapPct / 100);
+  const deltaKcal = Math.max(-capKcal, Math.min(capKcal, yesterdayRow.activeEnergyKcal - baseline));
+  const adjustedKcal = Math.round(plan.baseTargetKcal + deltaKcal);
+
+  const proteinKcal = plan.proteinG * 4;
+  const remainingKcal = Math.max(0, adjustedKcal - proteinKcal);
+  const baseCarbFatKcal = plan.carbG * 4 + plan.fatG * 9;
+  const carbShare = baseCarbFatKcal > 0 ? (plan.carbG * 4) / baseCarbFatKcal : 0.6;
+
+  const carbG = Math.round((remainingKcal * carbShare) / 4);
+  const fatG = Math.round((remainingKcal * (1 - carbShare)) / 9);
+
+  return {
+    kcal: adjustedKcal, proteinG: plan.proteinG, carbG, fatG,
+    adjusted: Math.abs(deltaKcal) > 5,
+    note: deltaKcal > 5 ? "+" + Math.round(deltaKcal) + "kcal, active day yesterday"
+        : deltaKcal < -5 ? Math.round(deltaKcal) + "kcal, quiet day yesterday" : ""
+  };
+}
+
+function todaysConsumedTotals() {
+  // Legacy function, now delegates to the fuelLog-based approach
+  return todaysLoggedTotals();
+}
+
+function mealMacros(plannedMeal) {
+  if (plannedMeal.templateId) {
+    const t = DB.mealTemplates.find(x => x.id === plannedMeal.templateId);
+    if (t) return { kcal: t.kcal, proteinG: t.proteinG, carbG: t.carbG, fatG: t.fatG };
+  }
+  return {
+    kcal: plannedMeal.actualKcal || 0, proteinG: plannedMeal.actualProteinG || 0,
+    carbG: plannedMeal.actualCarbG || 0, fatG: plannedMeal.actualFatG || 0
+  };
+}
+
+function macroBarHtml(label, consumed, target, color) {
+  const pct = target > 0 ? Math.min(100, Math.round(consumed / target * 100)) : 0;
+  return '<div class="macro-bar-row"><div class="macro-bar-head"><span>' + label + '</span>' +
+    '<span>' + Math.round(consumed) + ' / ' + Math.round(target) + '</span></div>' +
+    '<div class="macro-bar-track"><div class="macro-bar-fill" style="width:' + pct +
+    '%; background:' + color + ';"></div></div></div>';
+}
+
+/* ============================================================
+   JOURNAL ENGINE (Whoop-style morning check-in)
+   Journal lives in DB.journal: { dayKey: { answers: {q: bool}, note: "" } }
+   Renders on Command (compact), PROTO tab (full with history), and
+   correlates answers against telemetry in Behavior Insights.
+   ============================================================ */
+
+const JOURNAL_QUESTIONS = [
+  { key: "ALCOHOL",       label: "Alcohol last night?" },
+  { key: "STRESS",        label: "Stress elevated?" },
+  { key: "CAFFEINE_LATE", label: "Caffeine after 2pm?" },
+  { key: "POOR_SLEEP",    label: "Sleep disrupted?" },
+  { key: "SICK",          label: "Feeling unwell?" }
+];
+
+function getJournalEntry(day) {
+  DB.journal = DB.journal || {};
+  if (!DB.journal[day]) DB.journal[day] = { answers: {}, note: "" };
+  return DB.journal[day];
+}
+
+function setJournalAnswer(day, key, val) {
+  const entry = getJournalEntry(day);
+  entry.answers[key] = val;
+  saveDB(DB);
+}
+
+function setJournalNote(day, text) {
+  const entry = getJournalEntry(day);
+  entry.note = text;
+  saveDB(DB);
+}
+
+function journalStreakCount() {
+  let streak = 0;
+  const now = new Date();
+  for (let i = 0; i < 60; i++) {
+    const k = dayKey(new Date(now.getTime() - i * 86400000));
+    const entry = (DB.journal || {})[k];
+    if (entry && Object.keys(entry.answers).length > 0) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function buildJournalUI(container, day, compact) {
+  if (!container) return;
+  const entry = getJournalEntry(day);
+  container.innerHTML = "";
+
+  JOURNAL_QUESTIONS.forEach(q => {
+    const ans = entry.answers[q.key];
+    const row = document.createElement("div");
+    row.className = "jq-row";
+    row.innerHTML =
+      '<span class="jq-q">' + q.label + '</span><span class="jq-opts">' +
+      '<button class="jq-btn' + (ans === true ? " sel" : "") + '" data-jkey="' + q.key + '" data-jval="true">YES</button>' +
+      '<button class="jq-btn' + (ans === false ? " sel" : "") + '" data-jkey="' + q.key + '" data-jval="false">NO</button>' +
+      '</span>';
+    container.appendChild(row);
+  });
+
+  if (!compact) {
+    const noteRow = document.createElement("div");
+    noteRow.style.marginTop = "10px";
+    noteRow.innerHTML = '<textarea class="journal-note" id="journal-note-' + day + '" placeholder="Notes, how you feel, anything notable today...">' +
+      (entry.note || "") + '</textarea>';
+    container.appendChild(noteRow);
+    container.querySelector(".journal-note").addEventListener("input", (ev) => {
+      setJournalNote(day, ev.target.value);
+    });
+  }
+
+  container.addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".jq-btn");
+    if (!btn) return;
+    const val = btn.dataset.jval === "true";
+    setJournalAnswer(day, btn.dataset.jkey, val);
+    renderJournal();
+    if (container.id === "cmd-journal-body") renderJournalProto();
+    else renderJournal();
+  });
+}
+
+function renderJournal() {
+  const today = dayKey();
+  const streak = journalStreakCount();
+  const entry = getJournalEntry(today);
+  const allAnswered = JOURNAL_QUESTIONS.every(q => entry.answers[q.key] !== undefined);
+  const dot = document.getElementById("journal-cmd-dot");
+  if (dot) dot.style.color = allAnswered ? COLORS.green : COLORS.amber;
+
+  const streakEl = document.getElementById("journal-streak");
+  if (streakEl) streakEl.textContent = streak + "d streak";
+
+  buildJournalUI(document.getElementById("cmd-journal-body"), today, true);
+}
+
+function renderJournalProto() {
+  const today = dayKey();
+  const streak = journalStreakCount();
+  const streakEl = document.getElementById("proto-journal-streak");
+  if (streakEl) streakEl.textContent = streak + "d streak";
+  buildJournalUI(document.getElementById("proto-journal-body"), today, false);
+
+  // Behavior insights: correlate each journal key vs recovery
+  const insightsHost = document.getElementById("behavior-insights");
+  const insightLines = [];
+  JOURNAL_QUESTIONS.forEach(q => {
+    const yes = [], no = [];
+    Object.keys(DB.journal || {}).forEach(day => {
+      const entry = DB.journal[day];
+      const row = DB.telemetry[day];
+      if (!row || row.readinessScore == null) return;
+      if (entry.answers[q.key] === true) yes.push(row.readinessScore);
+      else if (entry.answers[q.key] === false) no.push(row.readinessScore);
+    });
+    if (yes.length >= 5 && no.length >= 5) {
+      const avgYes = Math.round(meanOf(yes));
+      const avgNo = Math.round(meanOf(no));
+      const delta = avgYes - avgNo;
+      insightLines.push({ label: q.label, delta, n: yes.length + no.length });
+    }
+  });
+  if (!insightLines.length) {
+    insightsHost.innerHTML = '<div class="empty-hint">Log 5 yes and 5 no days for each question to unlock correlations.</div>';
+  } else {
+    insightLines.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+    insightsHost.innerHTML = insightLines.map(l =>
+      '<div class="insight-row">' + l.label +
+      ' <span style="color:' + (l.delta < 0 ? COLORS.red : COLORS.green) + '">' +
+      (l.delta >= 0 ? "+" : "") + l.delta + 'pt recovery on YES days</span>' +
+      ' <span class="telemetry cap t3">(n=' + l.n + ')</span></div>'
+    ).join("");
+  }
+
+  // 7-day history
+  const historyHost = document.getElementById("journal-history");
+  const last7 = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(Date.now() - i * 86400000);
+    last7.push({ key: dayKey(d), d });
+  }
+  historyHost.innerHTML = last7.map(({ key, d }) => {
+    const entry = (DB.journal || {})[key];
+    if (!entry || Object.keys(entry.answers).length === 0) return "";
+    const dstr = String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0");
+    const flags = JOURNAL_QUESTIONS.filter(q => entry.answers[q.key] === true).map(q => q.label.split(" ").slice(-1)[0].replace("?","")).join(", ");
+    return '<div class="insight-row">' + dstr +
+      (flags ? ' <span class="telemetry cap" style="color:var(--amber)">' + flags + '</span>' : ' <span class="telemetry cap t3">No flags</span>') +
+      (entry.note ? '<br><span class="telemetry cap t3">' + entry.note.slice(0, 80) + (entry.note.length > 80 ? "…" : "") + "</span>" : "") +
+      "</div>";
+  }).filter(Boolean).join("") || '<div class="empty-hint">No journal entries yet this week.</div>';
+}
+
+/* Evidence-based macro formulas per goal (research: 2.2g/kg protein for fat loss,
+   1.8g/kg for muscle gain, all from meta-analyses cited in research pass). */
+const GOAL_CONFIGS = {
+  fat_loss:    { label: "Fat Loss",    kcalDelta: -500, proteinGPerKg: 2.2, fatGPerKg: 0.8 },
+  muscle_gain: { label: "Muscle Gain", kcalDelta: +300, proteinGPerKg: 1.8, fatGPerKg: 0.8 },
+  maintain:    { label: "Maintain",    kcalDelta:    0, proteinGPerKg: 1.6, fatGPerKg: 0.8 },
+  recomp:      { label: "Recomp",      kcalDelta: -200, proteinGPerKg: 2.4, fatGPerKg: 1.0 }
+};
+
+function macroTileHtml(label, consumed, target, color) {
+  const pct = target > 0 ? Math.min(100, Math.round(consumed / target * 100)) : 0;
+  const col = pct >= 100 ? COLORS.green : pct >= 75 ? COLORS.amber : color;
+  return '<div class="macro-ring-tile">' +
+    '<span class="macro-ring-val" style="color:' + col + '">' + Math.round(consumed) + '</span>' +
+    '<div class="macro-ring-lbl">' + label + '</div>' +
+    '<div class="macro-ring-pct" style="color:' + COLORS.dim + '">' + pct + '% of ' + Math.round(target) + '</div>' +
+    '</div>';
+}
+
+function todaysLoggedTotals() {
+  const meals = DB.fuelLog ? DB.fuelLog.filter(m => m.dayKey === dayKey()) : [];
+  return meals.reduce((acc, m) => {
+    acc.kcal += m.kcal || 0; acc.proteinG += m.proteinG || 0;
+    acc.carbG += m.carbG || 0; acc.fatG += m.fatG || 0;
+    return acc;
+  }, { kcal: 0, proteinG: 0, carbG: 0, fatG: 0 });
+}
+
+function renderFuelTab() {
+  DB.fuelLog = DB.fuelLog || [];
+  const plan = getOrCreateFuelPlan();
+  const targets = computeAdjustedTargets(plan);
+  const consumed = todaysLoggedTotals();
+
+  document.getElementById("fuel-adjust-note").textContent = targets.note;
+  document.getElementById("fuel-macro-tiles").innerHTML =
+    macroTileHtml("KCAL", consumed.kcal, targets.kcal, COLORS.cyan) +
+    macroTileHtml("PROTEIN", consumed.proteinG, targets.proteinG, COLORS.green) +
+    macroTileHtml("CARB", consumed.carbG, targets.carbG, COLORS.amber) +
+    macroTileHtml("FAT", consumed.fatG, targets.fatG, COLORS.red);
+
+  const logHost = document.getElementById("meal-log-list");
+  const todayMeals = DB.fuelLog.filter(m => m.dayKey === dayKey());
+  logHost.innerHTML = todayMeals.length
+    ? todayMeals.map((m, i) =>
+        '<div class="logged-meal-row">' +
+        '<span class="lm-name">' + m.name + '</span>' +
+        '<span class="lm-macro">' + m.kcal + ' kcal &middot; ' + m.proteinG + 'p ' + m.carbG + 'c ' + m.fatG + 'f</span>' +
+        '<button class="lm-del" data-logdel="' + i + '">&times;</button>' +
+        '</div>')
+      .join("")
+    : '<div class="empty-hint">Nothing logged yet. Describe what you ate above.</div>';
+}
+
+document.getElementById("meal-log-list").addEventListener("click", (ev) => {
+  if (ev.target.dataset.logdel == null) return;
+  const today = dayKey();
+  const todayIdxs = DB.fuelLog.reduce((arr, m, i) => { if (m.dayKey === today) arr.push(i); return arr; }, []);
+  const globalIdx = todayIdxs[Number(ev.target.dataset.logdel)];
+  if (globalIdx != null) DB.fuelLog.splice(globalIdx, 1);
+  saveDB(DB);
+  renderFuelTab();
+});
+
+/* ---------- AI Quick Log ---------- */
+async function aiLogMeal(description) {
+  const status = document.getElementById("fuel-log-status");
+  const cfg = loadAI();
+  if (!cfg || !cfg.key) { status.textContent = "Set your Anthropic API key in SYS first."; status.style.color = COLORS.red; return; }
+  const plan = getOrCreateFuelPlan();
+  status.innerHTML = '<span class="ai-thinking">ANALYSING...</span>';
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": cfg.key, "anthropic-version": "2023-06-01",
+        "content-type": "application/json", "anthropic-dangerous-direct-browser-access": "true" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6", max_tokens: 200,
+        messages: [{ role: "user", content:
+          "Return ONLY valid JSON, no markdown, no explanation. User ate: \"" + description + "\". " +
+          "Estimate: { \"name\": \"<brief label>\", \"kcal\": N, \"proteinG\": N, \"carbG\": N, \"fatG\": N }. " +
+          "Use standard UK/restaurant portion sizes. Integers only." }]
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error((data.error && data.error.message) || "HTTP " + res.status);
+    const raw = (data.content || []).map(b => b.text || "").join("").trim();
+    const obj = JSON.parse(raw.replace(/```json|```/g, "").trim());
+    DB.fuelLog = DB.fuelLog || [];
+    DB.fuelLog.push({ dayKey: dayKey(), ...obj });
+    saveDB(DB);
+    renderFuelTab();
+    document.getElementById("fuel-log-input").value = "";
+    status.textContent = obj.name + " logged: " + obj.kcal + " kcal / " + obj.proteinG + "g protein";
+    status.style.color = COLORS.green;
+  } catch (e) {
+    status.textContent = "Could not parse: " + e.message;
+    status.style.color = COLORS.red;
+  }
+}
+
+document.getElementById("btn-fuel-log").addEventListener("click", () => {
+  const v = document.getElementById("fuel-log-input").value.trim();
+  if (v) aiLogMeal(v);
+});
+document.getElementById("fuel-log-input").addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter") { ev.preventDefault(); const v = ev.target.value.trim(); if (v) aiLogMeal(v); }
+});
+
+/* ---------- Goal chips + plan auto-calculator ---------- */
+let currentGoal = "fat_loss";
+document.getElementById("goal-chips").addEventListener("click", (ev) => {
+  const btn = ev.target.closest(".goal-chip");
+  if (!btn) return;
+  currentGoal = btn.dataset.goal;
+  document.querySelectorAll(".goal-chip").forEach(b => b.classList.toggle("active", b.dataset.goal === currentGoal));
+});
+
+document.getElementById("btn-fuel-goal").addEventListener("click", () => {
+  const massKg = DB.operator.targetBodyMassKg || 84;
+  const baseline = baselineFor("activeEnergyKcal", dayKey(), DB.operator.baselineWindowDays);
+  const basal = (DB.operator.basalKcal || null);
+  const tdee = baseline ? Math.round(baseline + (basal || 1800)) : 2400;
+  const cfg = GOAL_CONFIGS[currentGoal] || GOAL_CONFIGS.maintain;
+  const kcal = Math.max(1200, tdee + cfg.kcalDelta);
+  const proteinG = Math.round(massKg * cfg.proteinGPerKg);
+  const fatG = Math.round(massKg * cfg.fatGPerKg);
+  const carbG = Math.max(50, Math.round((kcal - proteinG * 4 - fatG * 9) / 4));
+  const plan = getOrCreateFuelPlan();
+  plan.baseTargetKcal = kcal; plan.proteinG = proteinG; plan.carbG = carbG; plan.fatG = fatG;
+  saveDB(DB);
+  renderFuelTab();
+  document.getElementById("fuel-adjust-note").textContent =
+    cfg.label + " plan set: " + kcal + " kcal, " + proteinG + "g P / " + carbG + "g C / " + fatG + "g F";
+});
+
+/* ---------- AI Meal Planner ---------- */
+async function genMealPlan() {
+  const status = document.getElementById("meal-plan-out");
+  const cfg = loadAI();
+  if (!cfg || !cfg.key) { status.innerHTML = '<div class="empty-hint">Set Anthropic API key in SYS first.</div>'; return; }
+  const massKg = DB.operator.targetBodyMassKg || 84;
+  const goalLabel = GOAL_CONFIGS[currentGoal].label;
+  const plan = getOrCreateFuelPlan();
+  const prefs = document.getElementById("meal-plan-prefs").value.trim();
+  const lastHrv = (Object.values(DB.telemetry).sort((a,b)=>b.dayKey.localeCompare(a.dayKey))[0] || {}).hrvMs;
+  status.innerHTML = '<div class="ai-thinking">GENERATING WEEK PLAN...</div>';
+  try {
+    const prompt = "Create a 7-day meal plan for a serious athlete. " +
+      "Goal: " + goalLabel + ". Body mass: " + massKg + "kg. " +
+      "Daily targets: " + plan.baseTargetKcal + " kcal, " + plan.proteinG + "g protein, " +
+      plan.carbG + "g carbs, " + plan.fatG + "g fat. " +
+      (prefs ? "Preferences: " + prefs + ". " : "") +
+      (lastHrv ? "Current HRV: " + Math.round(lastHrv) + "ms. " : "") +
+      "Format: Monday through Sunday. For each day, list Breakfast, Lunch, Dinner, Snack on separate lines. " +
+      "Include rough macros per meal. Keep meals practical, whole-food focused, high protein. " +
+      "UK English. Plain text, no markdown headers or bullets.";
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": cfg.key, "anthropic-version": "2023-06-01",
+        "content-type": "application/json", "anthropic-dangerous-direct-browser-access": "true" },
+      body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1200, messages: [{ role: "user", content: prompt }] })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error((data.error && data.error.message) || "HTTP " + res.status);
+    const text = (data.content || []).map(b => b.text || "").join("").trim();
+    // Store the plan
+    const wk = weekStartKey();
+    DB.fuelPlans[wk] = DB.fuelPlans[wk] || {};
+    DB.fuelPlans[wk].aiPlanText = text;
+    DB.fuelPlans[wk].aiPlanGoal = goalLabel;
+    saveDB(DB);
+    renderMealPlanOut(text, goalLabel);
+  } catch (e) {
+    status.innerHTML = '<div class="empty-hint">Error: ' + e.message + '</div>';
+  }
+}
+
+function renderMealPlanOut(text, goal) {
+  const host = document.getElementById("meal-plan-out");
+  if (!text) { host.innerHTML = ""; return; }
+  const days = text.split(/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i).filter(Boolean);
+  let html = '<div class="telemetry cap t3" style="margin-bottom:10px;">' + (goal || "") + ' PLAN</div>';
+  for (let i = 0; i < days.length; i += 2) {
+    const dayName = days[i];
+    const content = days[i + 1] || "";
+    html += '<div class="meal-plan-day"><div class="meal-plan-day-head">' + dayName + '</div>';
+    content.trim().split(/\n+/).filter(Boolean).forEach(line => {
+      html += '<div class="meal-plan-item">' + line.trim() + '</div>';
+    });
+    html += '</div>';
+  }
+  host.innerHTML = html || '<div>' + text.split("\n").map(l => '<div class="meal-plan-item">' + l + '</div>').join("") + '</div>';
+}
+
+document.getElementById("btn-gen-plan").addEventListener("click", genMealPlan);
+
+// Restore any saved plan on tab open
+function restoreSavedMealPlan() {
+  const wk = weekStartKey();
+  const plan = DB.fuelPlans[wk];
+  if (plan && plan.aiPlanText) renderMealPlanOut(plan.aiPlanText, plan.aiPlanGoal);
+}
+
+function renderTemplateList() {
+  const host = document.getElementById("template-list");
+  if (!DB.mealTemplates.length) {
+    host.innerHTML = '<div class="empty-hint">No templates yet. Tap New to add one.</div>';
+    return;
+  }
+  host.innerHTML = DB.mealTemplates.map(t =>
+    '<div class="template-row" data-editmeal="' + t.id + '">' +
+    '<span class="tmpl-name">' + t.name + '</span>' +
+    '<span class="tmpl-macro">' + t.kcal + 'kcal &middot; ' + t.proteinG + 'p ' + t.carbG + 'c ' + t.fatG + 'f</span>' +
+    '</div>'
+  ).join("");
+}
+
+document.getElementById("template-list").addEventListener("click", (ev) => {
+  const id = ev.target.closest("[data-editmeal]");
+  if (id) openMealBuilder(id.dataset.editmeal);
+});
+
+function renderShoppingManifest() {
+  const wk = weekStartKey();
+  const weekKeys = [];
+  for (let i = 0; i < 7; i++) weekKeys.push(dayKey(new Date(new Date(wk).getTime() + i * 86400000)));
+  const meals = DB.plannedMeals.filter(m => weekKeys.includes(m.dayKey) && m.templateId);
+  const lines = [];
+  meals.forEach(m => {
+    const t = DB.mealTemplates.find(x => x.id === m.templateId);
+    if (t && t.ingredientsText) {
+      t.ingredientsText.split("\n").map(l => l.trim()).filter(Boolean).forEach(l => lines.push(l));
+    }
+  });
+  const host = document.getElementById("shopping-manifest");
+  if (!lines.length) {
+    host.innerHTML = '<div class="empty-hint">No ingredients yet. Assign templates with ingredients to this week\'s meals.</div>';
+    return;
+  }
+  const counts = {};
+  lines.forEach(l => { counts[l] = (counts[l] || 0) + 1; });
+  host.innerHTML = Object.keys(counts).map(l =>
+    '<div class="manifest-line">' + l + (counts[l] > 1 ? " &times;" + counts[l] : "") + '</div>'
+  ).join("");
+}
+
+/* ---------- Fuel plan overlay ---------- */
+
+document.getElementById("btn-edit-fuel-plan") && document.getElementById("btn-edit-fuel-plan").addEventListener("click", () => {
+  const plan = getOrCreateFuelPlan();
+  document.getElementById("fp-kcal").value = plan.baseTargetKcal;
+  document.getElementById("fp-protein").value = plan.proteinG;
+  document.getElementById("fp-carb").value = plan.carbG;
+  document.getElementById("fp-fat").value = plan.fatG;
+  document.getElementById("fp-dynamic").checked = plan.dynamicAdjustment;
+  document.getElementById("fp-cap").value = plan.adjustmentCapPct;
+  document.getElementById("fuel-plan-overlay").classList.add("open");
+});
+document.getElementById("btn-cancel-fuel-plan").addEventListener("click", () => {
+  document.getElementById("fuel-plan-overlay").classList.remove("open");
+});
+document.getElementById("btn-save-fuel-plan").addEventListener("click", () => {
+  const plan = getOrCreateFuelPlan();
+  plan.baseTargetKcal = Number(document.getElementById("fp-kcal").value) || plan.baseTargetKcal;
+  plan.proteinG = Number(document.getElementById("fp-protein").value) || plan.proteinG;
+  plan.carbG = Number(document.getElementById("fp-carb").value) || plan.carbG;
+  plan.fatG = Number(document.getElementById("fp-fat").value) || plan.fatG;
+  plan.dynamicAdjustment = document.getElementById("fp-dynamic").checked;
+  plan.adjustmentCapPct = Number(document.getElementById("fp-cap").value) || 0;
+  saveDB(DB);
+  document.getElementById("fuel-plan-overlay").classList.remove("open");
+  renderFuelTab();
+});
+
+/* ---------- Meal template builder ---------- */
+
+let mealEditId = null;
+
+function openMealBuilder(id) {
+  mealEditId = id;
+  document.getElementById("meal-builder-status").textContent = "";
+  const delBtn = document.getElementById("btn-delete-meal");
+  if (id) {
+    const t = DB.mealTemplates.find(x => x.id === id);
+    document.getElementById("meal-builder-title").textContent = "Edit Template";
+    document.getElementById("ml-name").value = t.name;
+    document.getElementById("ml-kcal").value = t.kcal;
+    document.getElementById("ml-protein").value = t.proteinG;
+    document.getElementById("ml-carb").value = t.carbG;
+    document.getElementById("ml-fat").value = t.fatG;
+    document.getElementById("ml-ingredients").value = t.ingredientsText || "";
+    delBtn.style.display = "block";
+  } else {
+    document.getElementById("meal-builder-title").textContent = "New Template";
+    document.getElementById("ml-name").value = "";
+    document.getElementById("ml-kcal").value = "";
+    document.getElementById("ml-protein").value = "";
+    document.getElementById("ml-carb").value = "";
+    document.getElementById("ml-fat").value = "";
+    document.getElementById("ml-ingredients").value = "";
+    delBtn.style.display = "none";
+  }
+  document.getElementById("meal-builder-overlay").classList.add("open");
+}
+
+document.getElementById("btn-new-meal").addEventListener("click", () => openMealBuilder(null));
+document.getElementById("btn-cancel-meal").addEventListener("click", () => {
+  document.getElementById("meal-builder-overlay").classList.remove("open");
+});
+document.getElementById("btn-save-meal").addEventListener("click", () => {
+  const status = document.getElementById("meal-builder-status");
+  const name = document.getElementById("ml-name").value.trim();
+  if (!name) { status.textContent = "Name the meal first."; status.style.color = COLORS.red; return; }
+  const data = {
+    name,
+    kcal: Number(document.getElementById("ml-kcal").value) || 0,
+    proteinG: Number(document.getElementById("ml-protein").value) || 0,
+    carbG: Number(document.getElementById("ml-carb").value) || 0,
+    fatG: Number(document.getElementById("ml-fat").value) || 0,
+    ingredientsText: document.getElementById("ml-ingredients").value
+  };
+  if (mealEditId) {
+    const t = DB.mealTemplates.find(x => x.id === mealEditId);
+    Object.assign(t, data);
+  } else {
+    DB.mealTemplates.push({ id: genId("meal-t"), ...data });
+  }
+  saveDB(DB);
+  document.getElementById("meal-builder-overlay").classList.remove("open");
+  renderTemplateList();
+  renderFuelTab();
+  renderShoppingManifest();
+});
+document.getElementById("btn-delete-meal").addEventListener("click", (ev) => {
+  if (!mealEditId) return;
+  armDangerButton(ev.currentTarget, "Delete", () => {
+    DB.mealTemplates = DB.mealTemplates.filter(t => t.id !== mealEditId);
+    DB.plannedMeals.forEach(m => { if (m.templateId === mealEditId) m.templateId = null; });
+    saveDB(DB);
+    document.getElementById("meal-builder-overlay").classList.remove("open");
+    renderTemplateList();
+    renderFuelTab();
+    renderShoppingManifest();
+  });
+});
+
+function renderFuel() {
+  renderFuelTab();
+  renderTemplateList();
+  renderShoppingManifest();
+  restoreSavedMealPlan();
+}
+
+/* ============================================================
+   BIO MODULE
+   Reference ranges are seeded defaults sourced from standard
+   clinical lab references and commonly cited optimal/wellness
+   targets (see reference note in the Bio tab). Band logic is a
+   simple two-boundary system: outside the clinical range is
+   red, inside clinical but outside optimal is amber, inside
+   optimal is green. This is informational, not diagnostic.
+   ============================================================ */
+
+function seedDefaultMarkers() {
+  if (Object.keys(DB.markers).length > 0) return;
+  const mk = (code, name, unit, category, clinicalLow, clinicalHigh, optimalLow, optimalHigh, sourceNote) => {
+    DB.markers[code] = { code, name, unit, category, clinicalLow, clinicalHigh, optimalLow, optimalHigh, sourceNote };
+  };
+  mk("TT", "Total Testosterone", "ng/dL", "hormonal", 264, 916, 500, 900,
+    "General adult male lab reference; varies by lab and assay.");
+  mk("FREE_T", "Free Testosterone", "pg/mL", "hormonal", 66, 309, 200, 300,
+    "Equilibrium dialysis reference range, healthy adult men.");
+  mk("APOB", "Apolipoprotein B", "mg/dL", "lipid", null, 130, null, 80,
+    "Standard lipid panel cutoff; optimal band targets lower cardiovascular risk.");
+  mk("CRP_HS", "hs-CRP", "mg/L", "inflammatory", null, 3.0, null, 1.0,
+    "AHA cardiovascular risk cutpoints (low risk under 1.0).");
+  mk("VITD", "Vitamin D (25-OH)", "ng/mL", "micronutrient", 30, 100, 40, 60,
+    "Endocrine Society sufficiency range.");
+  mk("GLUCOSE", "Fasting Glucose", "mg/dL", "metabolic", null, 100, 70, 90,
+    "ADA prediabetes threshold begins at 100mg/dL.");
+  mk("HDL", "HDL Cholesterol", "mg/dL", "lipid", 40, null, 60, null,
+    "Standard lipid panel; higher is protective.");
+  mk("LDL", "LDL Cholesterol", "mg/dL", "lipid", null, 130, null, 100,
+    "ADA/AHA near-optimal to optimal cutpoints.");
+  saveDB(DB);
+}
+
+function markerBand(marker, value) {
+  if (value == null) return { label: "NO DATA", color: COLORS.dim };
+  const { clinicalLow, clinicalHigh, optimalLow, optimalHigh } = marker;
+  if ((clinicalLow != null && value < clinicalLow) || (clinicalHigh != null && value > clinicalHigh)) {
+    return { label: "OUT OF RANGE", color: COLORS.red };
+  }
+  const belowOptimal = optimalLow != null && value < optimalLow;
+  const aboveOptimal = optimalHigh != null && value > optimalHigh;
+  if (belowOptimal || aboveOptimal) return { label: "IN RANGE", color: COLORS.amber };
+  return { label: "OPTIMAL", color: COLORS.green };
+}
+
+function logsForMarker(code) {
+  return DB.biomarkerLogs.filter(l => l.code === code).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function rangeCaption(marker) {
+  const fmt = (lo, hi) => (lo != null ? lo : "--") + " - " + (hi != null ? hi : "--") + " " + marker.unit;
+  return "CLINICAL: " + fmt(marker.clinicalLow, marker.clinicalHigh) +
+    "<br>OPTIMAL: " + fmt(marker.optimalLow, marker.optimalHigh) +
+    "<br><span class=\"t3\">" + marker.sourceNote + "</span>";
+}
+
+/* ---------- Bio AI import ---------- */
+async function bioAIImport() {
+  const status = document.getElementById("bio-import-status");
+  const text = document.getElementById("bio-ai-paste").value.trim();
+  if (!text) { status.textContent = "Paste lab results first."; status.style.color = COLORS.red; return; }
+  const cfg = loadAI();
+  if (!cfg || !cfg.key) { status.textContent = "Set Anthropic API key in SYS first."; status.style.color = COLORS.red; return; }
+
+  status.innerHTML = '<span class="ai-thinking">READING LAB REPORT...</span>';
+
+  const markers = Object.values(DB.markers);
+  const markerList = markers.map(m => m.code + "=" + m.name + " (" + m.unit + ")").join(", ");
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": cfg.key, "anthropic-version": "2023-06-01",
+        "content-type": "application/json", "anthropic-dangerous-direct-browser-access": "true" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6", max_tokens: 600,
+        messages: [{ role: "user", content:
+          "Extract blood test results from this lab report text. " +
+          "Known markers to match: " + markerList + ". " +
+          "Return ONLY a JSON array of objects: [{code, value, unit, date}]. " +
+          "code must be one of the known marker codes. value must be a number. " +
+          "date should be the report date if visible, otherwise omit. " +
+          "Convert units if needed (e.g. nmol/L to ng/dL for testosterone: multiply by 28.84). " +
+          "If a marker is not in the report, exclude it. No markdown, no explanation.\n\nLAB REPORT:\n" + text
+        }]
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error((data.error && data.error.message) || "HTTP " + res.status);
+    const raw = (data.content || []).map(b => b.text || "").join("").trim();
+    const results = JSON.parse(raw.replace(/```json|```/g, "").trim());
+    if (!Array.isArray(results) || !results.length) throw new Error("No markers recognised in this text.");
+
+    let imported = 0;
+    const today = dayKey();
+    results.forEach(r => {
+      if (!r.code || r.value == null || !DB.markers[r.code]) return;
+      DB.biomarkerLogs.push({
+        code: r.code, date: r.date || today,
+        value: Number(r.value), labName: "AI Import", fasted: null
+      });
+      imported++;
+    });
+    saveDB(DB);
+    renderMarkerList();
+    status.textContent = imported + " marker" + (imported !== 1 ? "s" : "") + " imported. Tap any card to review.";
+    status.style.color = COLORS.green;
+  } catch (e) {
+    status.textContent = "Import failed: " + e.message;
+    status.style.color = COLORS.red;
+  }
+}
+
+document.getElementById("btn-bio-ai-import").addEventListener("click", bioAIImport);
+document.getElementById("btn-bio-ai-clear").addEventListener("click", () => {
+  document.getElementById("bio-ai-paste").value = "";
+  document.getElementById("bio-import-status").textContent = "";
+});
+
+function renderMarkerList() {
+  seedDefaultMarkers();
+  const host = document.getElementById("marker-list");
+  host.innerHTML = Object.values(DB.markers).map(m => {
+    const logs = logsForMarker(m.code);
+    const latest = logs.length ? logs[logs.length - 1] : null;
+    const band = markerBand(m, latest ? latest.value : null);
+    const ageLabel = latest
+      ? Math.floor((Date.now() - new Date(latest.date).getTime()) / 86400000) + "d ago"
+      : "Not logged";
+    return '<div class="marker-card clickable" data-marker="' + m.code + '">' +
+      '<div class="marker-info">' +
+      '<div class="marker-name">' + m.name + '</div>' +
+      '<div class="marker-cat">' + m.category + '</div>' +
+      '</div>' +
+      '<div class="marker-value-col">' +
+      '<span class="marker-value" style="color:' + band.color + '">' + (latest ? latest.value : "--") + '</span> ' +
+      '<span class="marker-unit">' + m.unit + '</span>' +
+      '<div class="marker-age">' + ageLabel + '</div>' +
+      '</div></div>';
+  }).join("");
+}
+
+document.getElementById("marker-list").addEventListener("click", (ev) => {
+  const card = ev.target.closest("[data-marker]");
+  if (card) openMarkerOverlay(card.dataset.marker);
+});
+
+let markerOpenCode = null;
+
+function openMarkerOverlay(code) {
+  markerOpenCode = code;
+  const m = DB.markers[code];
+  const logs = logsForMarker(code);
+  const latest = logs.length ? logs[logs.length - 1] : null;
+  const band = markerBand(m, latest ? latest.value : null);
+
+  document.getElementById("marker-title").textContent = m.name.toUpperCase();
+  document.getElementById("marker-latest-value").textContent = latest ? latest.value : "--";
+  document.getElementById("marker-latest-value").style.color = band.color;
+  document.getElementById("marker-latest-unit").textContent = m.unit;
+  const badgeEl = document.getElementById("marker-badge");
+  if (latest) {
+    badgeEl.textContent = band.label;
+    badgeEl.style.display = "inline-block";
+    badgeEl.style.background = hexToRgba(band.color, 0.14);
+    badgeEl.style.color = band.color;
+  } else {
+    badgeEl.style.display = "none";
+  }
+  document.getElementById("marker-range-caption").innerHTML = rangeCaption(m);
+
+  const chartWrap = document.getElementById("marker-chart-wrap");
+  if (logs.length >= 2) {
+    chartWrap.style.display = "block";
+    document.getElementById("marker-chart").innerHTML = bigLine(logs.map(l => l.value), COLORS.cyan);
+  } else {
+    chartWrap.style.display = "none";
+  }
+
+  document.getElementById("mk-value").value = "";
+  document.getElementById("mk-date").value = dayKey();
+  document.getElementById("mk-lab").value = "";
+  document.getElementById("mk-fasted").checked = false;
+
+  document.getElementById("marker-history").innerHTML = logs.length
+    ? logs.slice().reverse().map(l =>
+        '<div class="log-history-row"><span>' + l.date + '</span><span>' + l.value + " " + m.unit +
+        (l.labName ? " &middot; " + l.labName : "") + '</span></div>'
+      ).join("")
+    : '<div class="empty-hint">No results logged yet.</div>';
+
+  document.getElementById("marker-overlay").classList.add("open");
+}
+
+document.getElementById("btn-close-marker").addEventListener("click", () => {
+  document.getElementById("marker-overlay").classList.remove("open");
+});
+
+document.getElementById("btn-save-marker-log").addEventListener("click", () => {
+  const value = Number(document.getElementById("mk-value").value);
+  if (!Number.isFinite(value)) return;
+  const date = document.getElementById("mk-date").value || dayKey();
+  DB.biomarkerLogs.push({
+    code: markerOpenCode, date, value,
+    labName: document.getElementById("mk-lab").value.trim() || null,
+    fasted: document.getElementById("mk-fasted").checked
+  });
+  saveDB(DB);
+  renderMarkerList();
+  openMarkerOverlay(markerOpenCode);
+});
+
+/* ============================================================
+   PROTOCOL MODULE
+   scheduleMask bit 0 = Monday ... bit 6 = Sunday. Streaks count
+   consecutive scheduled days completed, working backward from
+   today. The correlation line compares average Recovery on days
+   a directive was completed vs not, once there is enough of
+   both to say anything meaningful (3+ each).
+   ============================================================ */
+
+const CATEGORY_LABELS = {
+  coldExposure: "Cold exposure", heat: "Heat", supplement: "Supplement",
+  sleepHygiene: "Sleep hygiene", mobility: "Mobility", zone2: "Zone 2",
+  mindset: "Mindset", custom: "Custom"
+};
+
+function seedDefaultProtocols() {
+  if (DB.protocols.length > 0) return;
+  DB.protocols.push(
+    { id: genId("pd"), name: "COLD EXPOSURE", category: "coldExposure", scheduleMask: 0b1111111, targetValue: 3, targetUnit: "min", isActive: true, sortOrder: 0 },
+    { id: genId("pd"), name: "CREATINE 5G", category: "supplement", scheduleMask: 0b1111111, targetValue: 5, targetUnit: "g", isActive: true, sortOrder: 1 },
+    { id: genId("pd"), name: "SCREENS OFF BY 22:00", category: "sleepHygiene", scheduleMask: 0b1111111, targetValue: null, targetUnit: null, isActive: true, sortOrder: 2 },
+    { id: genId("pd"), name: "ZONE 2 SESSION", category: "zone2", scheduleMask: 0b0010010, targetValue: 30, targetUnit: "min", isActive: true, sortOrder: 3 }
+  );
+  saveDB(DB);
+}
+
+function weekdayBit(date) {
+  const d = date.getDay(); // 0 Sun .. 6 Sat
+  return d === 0 ? 6 : d - 1; // Mon=0 .. Sun=6
+}
+
+function isScheduledOnDate(directive, date) {
+  return (directive.scheduleMask & (1 << weekdayBit(date))) !== 0;
+}
+
+function completionFor(dayKeyStr, directiveId) {
+  return DB.completions[dayKeyStr] && DB.completions[dayKeyStr][directiveId];
+}
+
+function streakFor(directive) {
+  let streak = 0;
+  let d = new Date();
+  for (let i = 0; i < 90; i++) {
+    if (isScheduledOnDate(directive, d)) {
+      const comp = completionFor(dayKey(d), directive.id);
+      if (comp && comp.completed) streak++;
+      else break;
+    }
+    d = new Date(d.getTime() - 86400000);
+  }
+  return streak;
+}
+
+function correlationFor(directiveId) {
+  const done = [], skipped = [];
+  Object.keys(DB.completions).forEach(day => {
+    const row = DB.telemetry[day];
+    if (!row || row.readinessScore == null) return;
+    const comp = DB.completions[day][directiveId];
+    if (comp && comp.completed) done.push(row.readinessScore);
+    else if (comp) skipped.push(row.readinessScore);
+  });
+  if (done.length < 3 || skipped.length < 3) return null;
+  const avgDone = Math.round(meanOf(done));
+  const avgSkip = Math.round(meanOf(skipped));
+  return { delta: avgDone - avgSkip, n: done.length + skipped.length };
+}
+
+function renderProtocolList() {
+  seedDefaultProtocols();
+  const host = document.getElementById("protocol-list");
+  const today = dayKey();
+  const now = new Date();
+  const active = DB.protocols.filter(p => p.isActive !== false);
+  const scheduledToday = active.filter(p => isScheduledOnDate(p, now));
+
+  if (!scheduledToday.length) {
+    host.innerHTML = '<div class="empty-hint">Nothing scheduled today. Tap New to add a directive.</div>';
+    return;
+  }
+
+  host.innerHTML = scheduledToday.map(p => {
+    const comp = completionFor(today, p.id);
+    const done = !!(comp && comp.completed);
+    const streak = streakFor(p);
+    const corr = correlationFor(p.id);
+    let corrText = "";
+    if (corr) {
+      const cls = corr.delta > 0 ? "corr-pos" : corr.delta < 0 ? "corr-neg" : "";
+      corrText = ' &middot; <span class="' + cls + '">Recovery ' + (corr.delta >= 0 ? "+" : "") + corr.delta + "pt on done days (n=" + corr.n + ")</span>";
+    }
+    return '<div class="hud-card proto-row" data-editproto="' + p.id + '">' +
+      '<button class="sc-check' + (done ? " done" : "") + '" data-checkproto="' + p.id + '">' + (done ? "&#10003;" : "") + '</button>' +
+      '<div style="flex:1;">' +
+      '<div class="proto-name">' + p.name + '</div>' +
+      '<div class="proto-meta">' + CATEGORY_LABELS[p.category] +
+      (p.targetValue ? " &middot; " + p.targetValue + (p.targetUnit || "") : "") +
+      " &middot; " + streak + "d streak" + corrText + '</div>' +
+      '</div></div>';
+  }).join("");
+}
+
+document.getElementById("protocol-list").addEventListener("click", (ev) => {
+  const checkId = ev.target.dataset.checkproto;
+  if (checkId) {
+    const today = dayKey();
+    DB.completions[today] = DB.completions[today] || {};
+    const existing = DB.completions[today][checkId];
+    const nowDone = !(existing && existing.completed);
+    DB.completions[today][checkId] = { completed: nowDone, loggedValue: null, loggedAt: new Date().toISOString() };
+    saveDB(DB);
+    renderProtocolList();
+    return;
+  }
+  const row = ev.target.closest("[data-editproto]");
+  if (row) openProtocolBuilder(row.dataset.editproto);
+});
+
+let protocolEditId = null;
+
+function openProtocolBuilder(id) {
+  protocolEditId = id;
+  document.getElementById("protocol-builder-status").textContent = "";
+  const delBtn = document.getElementById("btn-delete-protocol");
+  const dayBtns = document.querySelectorAll("#pd-days .day-toggle");
+  if (id) {
+    const p = DB.protocols.find(x => x.id === id);
+    document.getElementById("protocol-builder-title").textContent = "Edit Directive";
+    document.getElementById("pd-name").value = p.name;
+    document.getElementById("pd-category").value = p.category;
+    document.getElementById("pd-target").value = p.targetValue || "";
+    document.getElementById("pd-unit").value = p.targetUnit || "";
+    dayBtns.forEach(b => b.classList.toggle("active", (p.scheduleMask & (1 << Number(b.dataset.day))) !== 0));
+    delBtn.style.display = "block";
+  } else {
+    document.getElementById("protocol-builder-title").textContent = "New Directive";
+    document.getElementById("pd-name").value = "";
+    document.getElementById("pd-category").value = "custom";
+    document.getElementById("pd-target").value = "";
+    document.getElementById("pd-unit").value = "";
+    dayBtns.forEach(b => b.classList.add("active"));
+    delBtn.style.display = "none";
+  }
+  document.getElementById("protocol-builder-overlay").classList.add("open");
+}
+
+document.getElementById("btn-new-protocol").addEventListener("click", () => openProtocolBuilder(null));
+document.getElementById("btn-cancel-protocol").addEventListener("click", () => {
+  document.getElementById("protocol-builder-overlay").classList.remove("open");
+});
+document.getElementById("pd-days").addEventListener("click", (ev) => {
+  const btn = ev.target.closest(".day-toggle");
+  if (btn) btn.classList.toggle("active");
+});
+document.getElementById("btn-save-protocol").addEventListener("click", () => {
+  const status = document.getElementById("protocol-builder-status");
+  const name = document.getElementById("pd-name").value.trim();
+  if (!name) { status.textContent = "Name the directive first."; status.style.color = COLORS.red; return; }
+  let mask = 0;
+  document.querySelectorAll("#pd-days .day-toggle.active").forEach(b => { mask |= (1 << Number(b.dataset.day)); });
+  if (mask === 0) { status.textContent = "Pick at least one day."; status.style.color = COLORS.red; return; }
+  const data = {
+    name, category: document.getElementById("pd-category").value, scheduleMask: mask,
+    targetValue: Number(document.getElementById("pd-target").value) || null,
+    targetUnit: document.getElementById("pd-unit").value.trim() || null,
+    isActive: true
+  };
+  if (protocolEditId) {
+    const p = DB.protocols.find(x => x.id === protocolEditId);
+    Object.assign(p, data);
+  } else {
+    DB.protocols.push({ id: genId("pd"), sortOrder: DB.protocols.length, ...data });
+  }
+  saveDB(DB);
+  document.getElementById("protocol-builder-overlay").classList.remove("open");
+  renderProtocolList();
+});
+document.getElementById("btn-delete-protocol").addEventListener("click", (ev) => {
+  if (!protocolEditId) return;
+  armDangerButton(ev.currentTarget, "Delete", () => {
+    DB.protocols = DB.protocols.filter(p => p.id !== protocolEditId);
+    saveDB(DB);
+    document.getElementById("protocol-builder-overlay").classList.remove("open");
+    renderProtocolList();
+  });
+});
+
+/* ============================================================
+   SUPABASE CLOUD SYNC
+   Strategy: localStorage is primary (fast, offline). Supabase
+   is the cloud backup. On every saveDB, we enqueue a cloud push.
+   On app open, we pull from cloud and merge.
+   ============================================================ */
+
+const SB_CONFIG_KEY = "biocommand.supabase";
+const CLOUD_SYNC_KEY = "biocommand.cloudsync";
+let _supabaseClient = null;
+let _currentUser = null;
+let _syncTimer = null;
+
+function loadSBConfig() {
+  try { return JSON.parse(Storage.get(SB_CONFIG_KEY)) || null; } catch (e) { return null; }
+}
+function saveSBConfig(cfg) { Storage.set(SB_CONFIG_KEY, JSON.stringify(cfg)); }
+
+function getSB() {
+  if (_supabaseClient) return _supabaseClient;
+  const cfg = loadSBConfig();
+  if (!cfg || !cfg.url || !cfg.key) return null;
+  try {
+    _supabaseClient = window.supabase.createClient(cfg.url, cfg.key, {
+      auth: { persistSession: true, storageKey: "biocommand.sbsession" }
+    });
+    return _supabaseClient;
+  } catch (e) { return null; }
+}
+
+function setCloudDot(state) {
+  ["hdr-cloud-dot", "cloud-dot"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.className = "cloud-dot " + (state || "");
+  });
+}
+
+function setCloudLabel(msg, state) {
+  const el = document.getElementById("cloud-status-lbl");
+  if (el) el.textContent = msg;
+  setCloudDot(state || "");
+}
+
+async function cloudPush() {
+  const sb = getSB();
+  if (!sb || !_currentUser) return false;
+  try {
+    setCloudDot("syncing");
+    const { error } = await sb.from("operator_data").upsert({
+      user_id: _currentUser.id,
+      data: DB,
+      synced_at: new Date().toISOString()
+    }, { onConflict: "user_id" });
+    if (error) throw error;
+    const cfg = loadSBConfig();
+    cfg.lastSync = new Date().toISOString();
+    saveSBConfig(cfg);
+    setCloudDot("synced");
+    renderCloudCard();
+    return true;
+  } catch (e) {
+    setCloudDot("error");
+    return false;
+  }
+}
+
+async function cloudPull() {
+  const sb = getSB();
+  if (!sb || !_currentUser) return false;
+  try {
+    const { data, error } = await sb.from("operator_data")
+      .select("data, synced_at").eq("user_id", _currentUser.id).single();
+    if (error || !data) return false;
+    const remote = data.data;
+    if (!remote || remote.version !== 1) return false;
+    // Merge: take remote as the base, but preserve any very recent local writes
+    // by keeping the most recent day's telemetry, sessions, fuelLog, journal
+    const localRecent = {};
+    const todayK = dayKey();
+    if (DB.telemetry[todayK]) localRecent.telemetry = { [todayK]: DB.telemetry[todayK] };
+    DB = { ...remote };
+    if (localRecent.telemetry) DB.telemetry = { ...DB.telemetry, ...localRecent.telemetry };
+    // Ensure migrations
+    DB.journal = DB.journal || {};
+    DB.fuelLog = DB.fuelLog || [];
+    DB.briefings = DB.briefings || {};
+    DB.workouts = DB.workouts || [];
+    DB.sessions = DB.sessions || [];
+    DB.seededWorkouts = DB.seededWorkouts || false;
+    Storage.set(DB_KEY, JSON.stringify(DB));
+    return true;
+  } catch (e) { return false; }
+}
+
+// Debounced cloud push: batches rapid writes into one network call
+function enqueueCloudSync() {
+  if (!getSB() || !_currentUser) return;
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(() => cloudPush(), 2000);
+}
+
+// Override saveDB to also enqueue a cloud sync
+const _originalSaveDB = saveDB;
+// Patch: saveDB is declared as a regular function above, we extend it here
+const _saveThenSync = (db) => {
+  Storage.set(DB_KEY, JSON.stringify(db));
+  renderDataCard();
+  enqueueCloudSync();
+};
+
+async function initSupabase() {
+  const sb = getSB();
+  if (!sb) { renderCloudCard(); return; }
+  try {
+    const { data: { user } } = await sb.auth.getUser();
+    _currentUser = user;
+    if (user) {
+      setCloudDot("syncing");
+      const pulled = await cloudPull();
+      if (pulled) {
+        renderCommand();
+        renderJournal();
+      }
+      setCloudDot("synced");
+      renderCloudCard();
+    } else {
+      renderCloudCard();
+    }
+    sb.auth.onAuthStateChange(async (event, session) => {
+      _currentUser = session ? session.user : null;
+      if (event === "SIGNED_IN" && _currentUser) {
+        await cloudPull();
+        renderCommand();
+      }
+      renderCloudCard();
+    });
+  } catch (e) { renderCloudCard(); }
+}
+
+function renderCloudCard() {
+  const cfg = loadSBConfig();
+  const signedInUI = document.getElementById("cloud-signed-in-ui");
+  const authUI = document.getElementById("cloud-auth-ui");
+  const emailRow = document.getElementById("cloud-email-row");
+  const signinRow = document.getElementById("cloud-signin-row");
+  if (!signedInUI || !authUI) return;
+
+  if (cfg && cfg.url && cfg.key) {
+    document.getElementById("sb-url").value = cfg.url;
+    document.getElementById("sb-key").value = cfg.key;
+    emailRow.style.display = "block";
+    signinRow.style.display = "block";
+  }
+
+  if (_currentUser) {
+    signedInUI.style.display = "block";
+    authUI.style.display = "none";
+    document.getElementById("cloud-user-email").textContent = _currentUser.email;
+    const cfg2 = loadSBConfig();
+    const lastEl = document.getElementById("cloud-last-sync");
+    if (lastEl) {
+      lastEl.textContent = cfg2 && cfg2.lastSync
+        ? "Last synced " + cfg2.lastSync.slice(5, 16).replace("T", " ")
+        : "Not yet synced this session";
+    }
+    setCloudDot("synced");
+    setCloudLabel("Signed in", "synced");
+  } else if (cfg && cfg.url) {
+    signedInUI.style.display = "none";
+    authUI.style.display = "block";
+    setCloudDot("offline");
+    setCloudLabel("Sign in to sync");
+  } else {
+    signedInUI.style.display = "none";
+    authUI.style.display = "block";
+    setCloudDot("");
+    setCloudLabel("Not configured");
+  }
+}
+
+document.getElementById("btn-sb-save").addEventListener("click", async () => {
+  const url = document.getElementById("sb-url").value.trim();
+  const key = document.getElementById("sb-key").value.trim();
+  const msg = document.getElementById("cloud-msg");
+  if (!url || !key) { msg.textContent = "Enter both URL and key."; msg.style.color = COLORS.red; return; }
+  _supabaseClient = null;
+  saveSBConfig({ url, key });
+  const sb = getSB();
+  if (!sb) { msg.textContent = "Could not create client. Check URL and key."; msg.style.color = COLORS.red; return; }
+  msg.textContent = "Saved. Enter your email to sign in.";
+  msg.style.color = COLORS.green;
+  document.getElementById("cloud-email-row").style.display = "block";
+  document.getElementById("cloud-signin-row").style.display = "block";
+  await initSupabase();
+});
+
+document.getElementById("btn-sb-signin").addEventListener("click", async () => {
+  const email = document.getElementById("sb-email").value.trim();
+  const msg = document.getElementById("cloud-msg");
+  const sb = getSB();
+  if (!sb || !email) { msg.textContent = "Enter your email."; msg.style.color = COLORS.red; return; }
+  msg.innerHTML = '<span class="ai-thinking">SENDING...</span>';
+  const origin = window.location.origin;
+  const path = window.location.pathname.replace(/\/$/, "");
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: origin + path + "/" }
+  });
+  if (error) {
+    msg.textContent = "Error: " + error.message;
+    msg.style.color = COLORS.red;
+  } else {
+    msg.textContent = "Magic link sent to " + email + ". Click it to sign in. You can close this screen.";
+    msg.style.color = COLORS.green;
+  }
+});
+
+document.getElementById("btn-cloud-sync").addEventListener("click", async () => {
+  await cloudPush();
+  renderCloudCard();
+});
+
+document.getElementById("btn-sb-signout").addEventListener("click", async () => {
+  const sb = getSB();
+  if (sb) await sb.auth.signOut();
+  _currentUser = null;
+  renderCloudCard();
+});
+
+document.getElementById("btn-sb-clear").addEventListener("click", () => {
+  _supabaseClient = null;
+  _currentUser = null;
+  Storage.remove(SB_CONFIG_KEY);
+  renderCloudCard();
+});
+
+/* ============================================================
+   NOTIFICATIONS (Service Worker + Web Push)
+   ============================================================ */
+
+const VAPID_PUBLIC = "BNc4j1_b5Si40nI6Aet0VOJDusf2QpRQHABjgS_mntjB7Lj4O9rBoGIxHxog0_UP_qOA4o06z-YzP1fV5RQlLMQ";
+
+let _sw = null;
+
+async function initServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.register("sw.js", { scope: "/bio-command/" });
+    _sw = reg;
+    await scheduleNotifications();
+    renderNotifCard();
+  } catch (e) {
+    console.log("SW registration failed:", e);
+  }
+}
+
+function buildNotificationSchedule() {
+  const now = Date.now();
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const notifs = [];
+
+  // Morning journal prompt at 08:30 tomorrow
+  const journalTime = new Date(tomorrow);
+  journalTime.setHours(8, 30, 0, 0);
+  const entry = (DB.journal || {})[dayKey()];
+  const allAnswered = entry && Object.keys(entry.answers || {}).length >= 3;
+  if (!allAnswered) {
+    notifs.push({
+      at: journalTime.getTime(),
+      title: "Bio-Command",
+      body: "Morning journal waiting. Check your recovery and log how you feel.",
+      tag: "journal-morning",
+      url: "/bio-command/?action=journal"
+    });
+  }
+
+  // Protocol reminders: for any active protocol scheduled today that is not yet complete
+  const nowDate = new Date();
+  const todayK = dayKey();
+  (DB.protocols || []).forEach(p => {
+    if (!p.isActive) return;
+    if (!(p.scheduleMask & (1 << weekdayBit(nowDate)))) return;
+    const comp = (DB.completions[todayK] || {})[p.id];
+    if (comp && comp.completed) return;
+    // Reminder at 18:30 for incomplete protocols
+    const reminderTime = new Date(nowDate);
+    reminderTime.setHours(18, 30, 0, 0);
+    if (reminderTime.getTime() > now) {
+      notifs.push({
+        at: reminderTime.getTime(),
+        title: "Protocol reminder",
+        body: p.name + " not yet logged today.",
+        tag: "proto-" + p.id,
+        url: "/bio-command/?tab=proto"
+      });
+    }
+  });
+
+  // Recovery alert: if red recovery, send notification during morning window
+  const todayRow = (DB.telemetry || {})[todayK];
+  if (todayRow && todayRow.readinessScore != null && todayRow.readinessScore < 34) {
+    const alertTime = new Date(tomorrow);
+    alertTime.setHours(7, 45, 0, 0);
+    notifs.push({
+      at: alertTime.getTime(),
+      title: "Recovery alert",
+      body: "Recovery scored " + todayRow.readinessScore + "/100. Red day. Reduce load.",
+      tag: "recovery-alert",
+      url: "/bio-command/"
+    });
+  }
+
+  return notifs;
+}
+
+async function scheduleNotifications() {
+  if (!_sw) return;
+  if (Notification.permission !== "granted") return;
+  const schedule = buildNotificationSchedule();
+  const channel = new MessageChannel();
+  _sw.active && _sw.active.postMessage(
+    { type: "SCHEDULE_NOTIFICATIONS", notifications: schedule },
+    [channel.port2]
+  );
+}
+
+async function requestNotificationPermission() {
+  if (!("Notification" in window)) {
+    document.getElementById("notif-detail").textContent = "Notifications are not supported in this browser.";
+    return;
+  }
+  const result = await Notification.requestPermission();
+  if (result === "granted") {
+    await scheduleNotifications();
+    // Try push subscription
+    if (_sw && window.PushManager) {
+      try {
+        const sub = await _sw.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: VAPID_PUBLIC
+        });
+        const sb = getSB();
+        if (sb && _currentUser) {
+          const key = sub.getKey("p256dh");
+          const auth = sub.getKey("auth");
+          await sb.from("push_subscriptions").upsert({
+            user_id: _currentUser.id,
+            endpoint: sub.endpoint,
+            p256dh: btoa(String.fromCharCode(...new Uint8Array(key))),
+            auth_key: btoa(String.fromCharCode(...new Uint8Array(auth)))
+          }, { onConflict: "user_id,endpoint" });
+        }
+      } catch (e) {
+        console.log("Push subscription failed:", e.message);
+      }
+    }
+  }
+  renderNotifCard();
+}
+
+function renderNotifCard() {
+  const dot = document.getElementById("notif-status-dot");
+  const lbl = document.getElementById("notif-status-lbl");
+  const detail = document.getElementById("notif-detail");
+  const btn = document.getElementById("btn-notif-enable");
+  if (!dot) return;
+  if (!("Notification" in window)) {
+    dot.style.color = COLORS.dim;
+    lbl.textContent = "Not supported";
+    if (detail) detail.textContent = "Use Safari on iOS 16.4+ with the app installed to the home screen.";
+    if (btn) btn.style.display = "none";
+    return;
+  }
+  const perm = Notification.permission;
+  if (perm === "granted") {
+    dot.style.color = COLORS.green;
+    lbl.textContent = "Enabled";
+    if (detail) detail.textContent = "Morning journal reminder, protocol nudges, and recovery alerts are scheduled.";
+    if (btn) btn.textContent = "Reschedule";
+  } else if (perm === "denied") {
+    dot.style.color = COLORS.red;
+    lbl.textContent = "Blocked";
+    if (detail) detail.textContent = "Blocked in browser settings. Open Settings > Safari > Notifications to re-enable.";
+    if (btn) btn.style.display = "none";
+  } else {
+    dot.style.color = COLORS.dim;
+    lbl.textContent = "Not enabled";
+    if (detail) detail.textContent = "Tap to enable. Must be installed to the home screen on iOS.";
+    if (btn) btn.style.display = "block";
+  }
+}
+
+document.getElementById("btn-notif-enable").addEventListener("click", requestNotificationPermission);
+
+/* ============================================================
+   TAB BADGES
+   ============================================================ */
+
+function renderTabBadges() {
+  const today = dayKey();
+  const now = new Date();
+
+  // CMD badge: journal not complete
+  const entry = (DB.journal || {})[today] || { answers: {} };
+  const journalDone = Object.keys(entry.answers).length >= 3;
+  const cmdBadge = document.querySelector('[data-view="view-command"] .tab-badge');
+  if (cmdBadge) cmdBadge.classList.toggle("show", !journalDone);
+
+  // PROTO badge: any scheduled directive not yet checked
+  const protoPending = (DB.protocols || [])
+    .filter(p => p.isActive && (p.scheduleMask & (1 << weekdayBit(now))))
+    .some(p => {
+      const comp = ((DB.completions || {})[today] || {})[p.id];
+      return !comp || !comp.completed;
+    });
+  const protoBadge = document.querySelector('[data-view="view-proto"] .tab-badge');
+  if (protoBadge) protoBadge.classList.toggle("show", protoPending);
+}
+
 function showView(id) {
   document.querySelectorAll("section.view").forEach(v => v.classList.remove("active"));
   document.getElementById(id).classList.add("active");
@@ -3097,6 +5112,10 @@ function showView(id) {
     b.classList.toggle("active", b.dataset.view === id));
   window.scrollTo(0, 0);
   if (id === "view-training") { renderWorkoutList(); renderSessionList(); }
+  if (id === "view-fuel") { renderFuel(); }
+  if (id === "view-bio") { renderMarkerList(); }
+  if (id === "view-proto") { renderProtocolList(); renderJournalProto(); }
+  renderTabBadges();
 }
 
 document.querySelectorAll("nav.tabbar button").forEach(btn => {
@@ -3156,7 +5175,13 @@ document.getElementById("btn-close-detail").addEventListener("click", closeDetai
 renderUplink();
 renderProfile();
 renderDataCard();
+renderCloudCard();
+renderNotifCard();
 seedDefaultWorkouts();
+renderJournal();
+initSupabase();
+initServiceWorker();
+renderTabBadges();
 applyTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
 if (loadSyncConfig() && (loadSyncConfig() || {}).pass) {
   syncNow();
