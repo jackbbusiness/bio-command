@@ -1,5 +1,13 @@
 "use strict";
 
+/**
+ * Runtime dependencies supplied by app.js:
+ * - DB
+ * - dayKey
+ * - fmtMin
+ * - bandColor
+ * - showView
+ */
 (function (global) {
   function createHistoryModule({ dayKey, fmtMin, bandColor, DB, showView }) {
     let selectedKey = dayKey();
