@@ -1,4 +1,4 @@
-# BIO-COMMAND v2
+# BIO-COMMAND v2.2
 
 A privacy-first tactical health dashboard combining recovery, training, nutrition, biomarkers, protocols, journaling and Garmin telemetry.
 
@@ -32,3 +32,19 @@ See `SETUP.md` for the Garmin uplink instructions and `supabase-setup.sql` for o
 ## Fuel barcode scanner
 
 Fuel now includes a camera barcode scanner. It reads EAN, UPC and Code 128 barcodes with `html5-qrcode`, looks products up through Open Food Facts, lets the user choose grams or servings, then writes calories and macros into the existing daily fuel log. Camera access requires HTTPS, which GitHub Pages provides. A manual barcode field is included when camera access is unavailable.
+
+
+## History Mode v2.2
+
+Tap the date in the app header to open historical data. Browse individual days, choose a calendar date, review 7/30/90-day, yearly or all-time trends, and inspect Garmin, Fuel, Training, Protocol, Journal and biomarker records together.
+
+
+## v2.2.1 audit fixes
+
+- Includes biomarker-only dates in All Time history.
+- Keeps the 14-day selector anchored to the date being reviewed.
+- Refreshes History immediately when data changes in the same app session.
+- Escapes user-entered text before rendering historical records.
+- Adds a maximum date to the calendar so future dates cannot be selected.
+- Removes a duplicate historical-record render.
+- Cache-busts all updated assets and service-worker state.

@@ -93,6 +93,7 @@ function saveDB(db) {
   Storage.set(DB_KEY, JSON.stringify(db));
   renderDataCard();
   enqueueCloudSync();
+  window.dispatchEvent(new CustomEvent("biocommand:data-changed"));
 }
 
 let DB = loadDB();

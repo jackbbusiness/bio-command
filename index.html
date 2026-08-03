@@ -21,7 +21,8 @@ try {
 } catch (e) {}
 </script>
 <link rel="stylesheet" href="css/app.css?v=2.1.1">
-<link rel="stylesheet" href="css/intelligence.css?v=2.1.1">
+<link rel="stylesheet" href="css/intelligence.css?v=2.2.1">
+<link rel="stylesheet" href="css/history.css?v=2.2.1">
 </head>
 <body>
 
@@ -30,7 +31,7 @@ try {
   <div class="hdr-right">
     <span class="cloud-dot" id="hdr-cloud-dot" title="Cloud sync" style="width:7px;height:7px;"></span>
     <span class="sync-dot" id="sync-dot" title="Garmin uplink"></span>
-    <span id="hdr-date"></span>
+    <button class="header-date-btn" id="hdr-date" type="button" aria-label="Open history"></button>
     <button class="mode-btn" id="btn-theme" aria-label="Toggle day and night theme">NIGHT</button>
     <button class="mode-btn" id="btn-sys" aria-label="Open system settings">SYS</button>
   </div>
@@ -359,6 +360,59 @@ try {
         <span class="telemetry cap t3">LAST 7 DAYS</span>
       </div>
       <div id="journal-history"></div>
+    </div>
+  </section>
+
+
+  <!-- ================= HISTORY ================= -->
+  <section class="view" id="view-history">
+    <div class="history-toolbar span-2">
+      <button class="history-nav-btn" id="history-prev" type="button" aria-label="Previous day">&#8249;</button>
+      <button class="history-date-main" id="history-date-main" type="button">
+        <span class="history-date-kicker" id="history-date-kicker">TODAY</span>
+        <span class="history-date-label" id="history-date-label"></span>
+      </button>
+      <button class="history-nav-btn" id="history-next" type="button" aria-label="Next day">&#8250;</button>
+      <input id="history-date-input" class="history-native-date" type="date" aria-label="Choose date">
+    </div>
+
+    <div class="history-range-row span-2" id="history-range-row">
+      <button class="history-range active" data-days="7">7D</button>
+      <button class="history-range" data-days="30">30D</button>
+      <button class="history-range" data-days="90">90D</button>
+      <button class="history-range" data-days="365">1Y</button>
+      <button class="history-range" data-days="0">ALL</button>
+    </div>
+
+    <div class="history-metric-grid span-2" id="history-day-metrics"></div>
+
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="status-dot" style="color:var(--cyan)"></span>
+        <span class="hud-label">Range Intelligence</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3" id="history-range-caption"></span>
+      </div>
+      <div class="history-range-summary" id="history-range-summary"></div>
+      <div class="history-trend" id="history-trend"></div>
+    </div>
+
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="hud-label">Daily Record</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3">ALL MODULES</span>
+      </div>
+      <div class="history-record" id="history-record"></div>
+    </div>
+
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="hud-label">Recent Days</span>
+        <span class="spacer"></span>
+        <button class="tac-btn" id="history-today" type="button" style="min-height:32px;padding:5px 12px;">Today</button>
+      </div>
+      <div class="history-day-strip" id="history-day-strip"></div>
     </div>
   </section>
 
@@ -921,7 +975,8 @@ try {
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="js/app.js?v=2.1.1"></script>
-<script src="js/intelligence.js?v=2.1.1"></script>
+<script src="js/app.js?v=2.2.1"></script>
+<script src="js/intelligence.js?v=2.2.1"></script>
+<script src="js/history.js?v=2.2.1"></script>
 </body>
 </html>
