@@ -491,13 +491,189 @@ html[data-theme="light"] nav.tabbar button.active { background: rgba(0, 136, 174
     var(--gutter);
 }
 .overlay.open { display: block; }
+
+.clickable { cursor: pointer; transition: transform 0.12s ease, border-color 0.12s ease; }
+.clickable:active { transform: scale(0.97); }
+.hud-card.clickable:active, .metric-card.clickable:active { border-color: var(--cyan); }
+.stat-chip.clickable:active { border-color: var(--cyan); }
+
+.detail-line {
+  font-family: var(--mono); font-size: 11px; line-height: 1.6;
+  color: var(--text-2); padding: 9px 0; border-top: 1px solid var(--tac-border);
+}
+.detail-line:first-child { border-top: none; padding-top: 0; }
+
+.detail-chart-label {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  letter-spacing: 0.13em; text-transform: uppercase; color: var(--text-3);
+  margin-top: 16px; margin-bottom: 2px;
+}
+.detail-chart { display: block; width: 100%; height: 108px; }
+.detail-chart-days {
+  display: flex; justify-content: space-between;
+  font-family: var(--mono); font-size: 8px; color: var(--text-3);
+  padding: 3px 4px 0; letter-spacing: 0.05em;
+}
+
+/* ---------- Train module ---------- */
+
+.workout-card { display: flex; flex-direction: column; gap: 10px; }
+.wk-head { display: flex; align-items: baseline; gap: 8px; }
+.wk-name { font-family: var(--mono); font-size: 15px; font-weight: 650; color: var(--text-1); }
+.wk-focus { font-family: var(--mono); font-size: 10px; color: var(--text-3); letter-spacing: 0.04em; }
+.wk-exlist { font-family: var(--mono); font-size: 10px; color: var(--text-2); line-height: 1.7; }
+.wk-actions { display: flex; gap: 8px; }
+
+.session-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 13px;
+  background: var(--tac-surface); border: 1px solid var(--tac-border);
+  border-radius: var(--r-input);
+  font-family: var(--mono); font-size: 11px;
+}
+.session-row .sr-date { color: var(--text-3); width: 46px; flex: none; }
+.session-row .sr-name { color: var(--text-1); flex: 1; }
+.session-row .sr-meta { color: var(--text-3); font-size: 10px; text-align: right; }
+
+.empty-hint {
+  font-family: var(--mono); font-size: 11px; color: var(--text-3);
+  padding: 16px; text-align: center; border: 1px dashed var(--tac-border);
+  border-radius: var(--r-card);
+}
+
+.ex-row {
+  border: 1px solid var(--tac-border); border-radius: var(--r-input);
+  padding: 12px; margin-bottom: 10px; position: relative;
+}
+.ex-row-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.ex-remove {
+  position: absolute; top: 8px; right: 8px;
+  background: transparent; border: 0; color: var(--text-3);
+  font-family: var(--mono); font-size: 16px; cursor: pointer; line-height: 1; padding: 4px 6px;
+}
+.ex-remove:active { color: var(--red); }
+.ex-field-lbl {
+  font-family: var(--mono); font-size: 8px; letter-spacing: 0.08em;
+  color: var(--text-3); text-transform: uppercase; display: block; margin-bottom: 4px;
+}
+
+.tac-input-lg {
+  appearance: none; width: 100%;
+  background: var(--tac-raised); border: 1px solid var(--tac-border);
+  border-radius: var(--r-input); color: var(--text-1);
+  font-family: var(--mono); font-size: 24px; font-weight: 600;
+  font-variant-numeric: tabular-nums; text-align: center;
+  padding: 14px 8px; min-height: 60px;
+}
+.tac-input-lg:focus { outline: none; border-color: var(--cyan); }
+
+.exec-progress {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+  color: var(--text-3); text-transform: uppercase;
+}
+.exec-exercise-name { font-family: var(--mono); font-size: 21px; font-weight: 650; margin: 8px 0 3px; color: var(--text-1); }
+.exec-target { font-family: var(--mono); font-size: 11px; color: var(--text-2); margin-bottom: 12px; }
+.exec-last {
+  font-family: var(--mono); font-size: 10px; color: var(--text-3);
+  margin-bottom: 16px; padding: 9px 11px; background: var(--tac-raised);
+  border-radius: var(--r-input); line-height: 1.6;
+}
+.exec-suggest { color: var(--cyan); }
+.exec-inputs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.exec-setlog {
+  font-family: var(--mono); font-size: 10px; color: var(--text-3);
+  margin-bottom: 14px; line-height: 1.8;
+}
+
+.rest-timer { text-align: center; padding: 26px 0 18px; }
+.rest-timer .rt-big {
+  font-family: var(--mono); font-size: 54px; font-weight: 650; color: var(--cyan);
+  font-variant-numeric: tabular-nums;
+}
+.rest-timer .rt-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; color: var(--text-3); margin-top: 6px; }
+
+/* ---------- Session logger (v0.11) ---------- */
+
+.overlay.overlay-flex { flex-direction: column; padding: 0; }
+.overlay.overlay-flex.open { display: flex; }
+
+.exec-header {
+  position: sticky; top: 0; z-index: 2;
+  display: flex; align-items: center; gap: 12px;
+  padding: calc(env(safe-area-inset-top) + 14px) 16px 12px;
+  background: var(--overlay-bg);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--tac-border);
+}
+.exec-stat { font-family: var(--mono); font-size: 11px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+.exec-body {
+  flex: 1; overflow-y: auto;
+  padding: 16px 16px calc(env(safe-area-inset-bottom) + 96px);
+  max-width: 560px; margin: 0 auto; width: 100%;
+}
+
+.exec-ex-card { margin-bottom: 24px; }
+.exec-ex-title { font-family: var(--mono); font-size: 15px; font-weight: 650; color: var(--text-1); }
+.exec-ex-sub { font-family: var(--mono); font-size: 10px; color: var(--text-3); display: block; margin-top: 2px; }
+
+.set-row {
+  display: grid; grid-template-columns: 20px 48px 1fr 1fr 1fr 34px;
+  gap: 6px; align-items: center; padding: 5px 0;
+}
+.set-row-head {
+  font-family: var(--mono); font-size: 8px; letter-spacing: 0.08em;
+  color: var(--text-3); text-transform: uppercase;
+  padding-bottom: 5px; margin-bottom: 3px; border-bottom: 1px solid var(--tac-border);
+  text-align: center;
+}
+.set-row-head span:first-child, .set-row-head span:nth-child(2) { text-align: center; }
+.sc-num, .sc-prev { font-family: var(--mono); font-size: 11px; color: var(--text-3); text-align: center; }
+
+.sc-input {
+  appearance: none; width: 100%;
+  background: var(--tac-raised); border: 1px solid var(--tac-border);
+  border-radius: 8px; color: var(--text-1);
+  font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums;
+  text-align: center; padding: 8px 2px; min-height: 40px;
+}
+.sc-input:focus { outline: none; border-color: var(--cyan); }
+.sc-input:disabled { opacity: 0.55; border-color: transparent; background: transparent; }
+
+.sc-check {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--tac-border); background: transparent;
+  color: var(--text-3); font-family: var(--mono); font-size: 14px; cursor: pointer;
+}
+.set-row.done .sc-check { background: var(--green); border-color: var(--green); color: #0D0F12; }
+.set-row.done { opacity: 0.82; }
+
+.add-set-btn {
+  width: 100%; margin-top: 6px;
+  background: transparent; border: 1px dashed var(--tac-border); border-radius: 8px;
+  color: var(--text-3); font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+  padding: 9px; cursor: pointer;
+}
+.add-set-btn:active { border-color: var(--cyan); color: var(--cyan); }
+
+.exec-restbar {
+  position: fixed; left: 0; right: 0; bottom: env(safe-area-inset-bottom);
+  z-index: 3; display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px; background: var(--tac-surface); border-top: 1px solid var(--cyan);
+}
+.exec-restbar .rb-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--cyan); }
+.exec-restbar .rb-time {
+  font-family: var(--mono); font-size: 19px; font-weight: 650; color: var(--cyan);
+  font-variant-numeric: tabular-nums; margin-right: auto;
+}
+.pr-line { color: var(--green); }
 .overlay-inner { max-width: 560px; margin: 0 auto; }
 </style>
 </head>
 <body>
 
 <header class="console">
-  <div class="sys-id">BIO-COMMAND <span class="ver">v0.6</span></div>
+  <div class="sys-id">BIO-COMMAND <span class="ver">v0.13</span></div>
   <div class="hdr-right">
     <span class="sync-dot" id="sync-dot" title="Garmin uplink"></span>
     <span id="hdr-date"></span>
@@ -514,7 +690,7 @@ html[data-theme="light"] nav.tabbar button.active { background: rgba(0, 136, 174
     <!-- Hero: recovery ring + glanceable chips -->
     <div class="hud-card hero span-2">
       <div class="hero-top">
-        <div class="ring-wrap">
+        <div class="ring-wrap" id="hero-ring-hook">
           <svg viewBox="0 0 148 148">
             <defs>
               <linearGradient id="ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -532,19 +708,19 @@ html[data-theme="light"] nav.tabbar button.active { background: rgba(0, 136, 174
           </div>
         </div>
         <div class="hero-chips">
-          <div class="stat-chip">
+          <div class="stat-chip" data-detail="systemLoadScore">
             <span class="status-dot" style="color: var(--red)"></span>
             <span class="sc-label">Strain</span>
             <span class="sc-val" id="chip-strain">--</span>
-            <span class="sc-sub">/21</span>
+            <span class="sc-sub" id="chip-strain-sub">/21</span>
           </div>
-          <div class="stat-chip">
+          <div class="stat-chip" data-detail="hrvMs">
             <span class="status-dot" style="color: var(--cyan)"></span>
             <span class="sc-label">HRV</span>
             <span class="sc-val" id="chip-hrv">--</span>
             <span class="sc-sub" id="chip-hrv-sub">MS</span>
           </div>
-          <div class="stat-chip">
+          <div class="stat-chip" data-detail="sleepTotalMin">
             <span class="status-dot" style="color: var(--amber)"></span>
             <span class="sc-label">Sleep</span>
             <span class="sc-val" id="chip-sleep">--</span>
@@ -564,13 +740,13 @@ html[data-theme="light"] nav.tabbar button.active { background: rgba(0, 136, 174
       <div class="card-head" style="margin-bottom:9px; padding: 0 2px;">
         <span class="hud-label">Key Metrics</span>
         <span class="spacer"></span>
-        <span class="telemetry cap t3">LAST 7 DAYS</span>
+        <span class="telemetry cap t3">LAST 7 DAYS &middot; TAP FOR DETAIL</span>
       </div>
       <div class="metrics-grid" id="metrics-grid"></div>
     </div>
 
     <!-- Sleep architecture -->
-    <div class="hud-card span-2">
+    <div class="hud-card span-2" id="sleep-arch-card">
       <div class="card-head">
         <span class="hud-label">Sleep Architecture</span>
         <span class="spacer"></span>
@@ -613,14 +789,21 @@ html[data-theme="light"] nav.tabbar button.active { background: rgba(0, 136, 174
 
   </section>
 
-  <!-- ================= STUB VIEWS ================= -->
+  <!-- ================= TRAIN ================= -->
   <section class="view" id="view-training">
-    <div class="hud-card module-pending span-2">
-      <div class="hud-label">Tactical Training</div>
-      <div class="telemetry cap" style="margin-top:8px;">MODULE OFFLINE // BUILDS IN SECTION 3</div>
+    <div class="span-2" style="display:flex; align-items:center; gap:8px; padding:0 2px;">
+      <span class="hud-label" style="flex:1;">Operational Workouts</span>
+      <button class="tac-btn primary" id="btn-new-workout" style="min-height:38px; padding:8px 16px;">New</button>
+    </div>
+    <div id="workout-list" class="span-2" style="display:flex; flex-direction:column; gap:10px;"></div>
+
+    <div class="span-2" style="margin-top:8px;">
+      <div class="hud-label" style="margin-bottom:9px; padding:0 2px;">Recent Sessions</div>
+      <div id="session-list" style="display:flex; flex-direction:column; gap:8px;"></div>
     </div>
   </section>
 
+  <!-- ================= STUB VIEWS ================= -->
   <section class="view" id="view-fuel">
     <div class="hud-card module-pending span-2">
       <div class="hud-label">Fuel Engine</div>
@@ -644,6 +827,28 @@ html[data-theme="light"] nav.tabbar button.active { background: rgba(0, 136, 174
 
   <!-- ================= SYS (settings, via header) ================= -->
   <section class="view" id="view-sys">
+
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="status-dot" style="color: var(--text-3)"></span>
+        <span class="hud-label">Profile</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3" id="profile-status"></span>
+      </div>
+      <div class="form-grid">
+        <div class="full">
+          <label class="hud-label field-lbl" for="prof-maxhr">Max heart rate (BPM)</label>
+          <input class="tac-input" id="prof-maxhr" type="number" inputmode="numeric" min="100" max="230" step="1" placeholder="e.g. 187">
+        </div>
+        <div class="full btn-row" style="margin-top:2px;">
+          <button class="tac-btn primary" id="btn-save-profile" style="flex:1;">Save</button>
+        </div>
+        <div class="full telemetry cap t3">
+          Used to estimate strain from heart rate on days synced automatically from Garmin
+          with no logged RPE. If you do not know it exactly, a common estimate is 220 minus your age.
+        </div>
+      </div>
+    </div>
 
     <div class="hud-card span-2">
       <div class="card-head">
@@ -706,6 +911,7 @@ html[data-theme="light"] nav.tabbar button.active { background: rgba(0, 136, 174
         <button class="tac-btn danger" id="btn-wipe">Wipe</button>
         <input type="file" id="import-file" accept="application/json" hidden>
       </div>
+      <div class="telemetry cap t3" id="import-status" style="margin-top:8px;"></div>
     </div>
 
   </section>
@@ -713,6 +919,88 @@ html[data-theme="light"] nav.tabbar button.active { background: rgba(0, 136, 174
 </main>
 
 <!-- ================= LOG TELEMETRY OVERLAY ================= -->
+<div class="overlay" id="detail-overlay">
+  <div class="overlay-inner">
+    <div class="card-head" style="margin-bottom:16px;">
+      <span class="status-dot" id="detail-dot" style="color: var(--cyan)"></span>
+      <span class="hud-label" id="detail-title">DETAIL</span>
+      <span class="spacer"></span>
+      <button class="tac-btn" id="btn-close-detail" style="min-height:36px; padding:7px 14px;">Close</button>
+    </div>
+    <div style="display:flex; align-items:baseline; gap:8px; margin-bottom:4px;">
+      <span class="telemetry" id="detail-value" style="font-size:34px; font-weight:650; font-variant-numeric:tabular-nums;">--</span>
+      <span class="telemetry cap t3" id="detail-unit"></span>
+      <span class="badge" id="detail-badge" style="margin-left:auto; display:none;"></span>
+    </div>
+    <div class="detail-chart-label">Last 7 Days</div>
+    <div id="detail-chart"></div>
+    <div class="detail-chart-days" id="detail-chart-days"></div>
+    <div class="telemetry cap t2" id="detail-def" style="line-height:1.65; margin-top:16px;"></div>
+    <div id="detail-breakdown" style="margin-top:14px;"></div>
+    <div class="telemetry cap t3" id="detail-note" style="margin-top:14px; display:none;"></div>
+  </div>
+</div>
+
+<div class="overlay" id="builder-overlay">
+  <div class="overlay-inner">
+    <div class="card-head" style="margin-bottom:16px;">
+      <span class="status-dot" style="color: var(--cyan)"></span>
+      <span class="hud-label" id="builder-title">New Workout</span>
+      <span class="spacer"></span>
+      <button class="tac-btn" id="btn-cancel-builder" style="min-height:36px; padding:7px 14px;">Cancel</button>
+    </div>
+    <div class="form-grid">
+      <div class="full">
+        <label class="hud-label field-lbl" for="wk-name">Name</label>
+        <input class="tac-input" id="wk-name" type="text" placeholder="OP: LOWER HEAVY">
+      </div>
+      <div class="full">
+        <label class="hud-label field-lbl" for="wk-focus">Focus</label>
+        <input class="tac-input" id="wk-focus" type="text" placeholder="Lower / Posterior">
+      </div>
+    </div>
+    <div class="hud-label" style="margin-top:18px; margin-bottom:4px;">Exercises</div>
+    <div id="ex-rows"></div>
+    <div class="btn-row">
+      <button class="tac-btn" id="btn-add-exercise" style="flex:1;">Add exercise</button>
+    </div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="tac-btn primary" id="btn-save-workout" style="flex:2;">Save workout</button>
+      <button class="tac-btn danger" id="btn-delete-workout" style="flex:1; display:none;">Delete</button>
+    </div>
+    <div class="telemetry cap t3" id="builder-status" style="margin-top:10px; text-align:center;"></div>
+  </div>
+</div>
+
+<div class="overlay overlay-flex" id="exec-overlay">
+  <div class="exec-header">
+    <span class="status-dot" style="color: var(--red)"></span>
+    <span class="hud-label" id="exec-workout-name">WORKOUT</span>
+    <span class="spacer"></span>
+    <span class="exec-stat" id="exec-elapsed">0:00</span>
+    <span class="exec-stat" id="exec-volume">0KG</span>
+    <button class="tac-btn" id="btn-end-session" style="min-height:32px; padding:6px 12px;">End</button>
+  </div>
+
+  <div class="exec-body" id="exec-body">
+    <div id="exec-exercise-list"></div>
+
+    <div id="exec-done-screen" style="display:none; text-align:center; padding:40px 0;">
+      <div class="hero-metric-label" style="margin-bottom:10px;">WORKOUT COMPLETE</div>
+      <div class="telemetry cap t2" id="exec-summary" style="line-height:1.8;"></div>
+      <div class="btn-row" style="justify-content:center; margin-top:22px;">
+        <button class="tac-btn primary" id="btn-close-exec" style="flex:1; max-width:220px;">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="exec-restbar" id="exec-restbar" style="display:none;">
+    <span class="rb-label">RESTING</span>
+    <span class="rb-time" id="rb-time">0:00</span>
+    <button class="tac-btn" id="btn-skip-rest" style="min-height:32px; padding:6px 14px;">Skip</button>
+  </div>
+</div>
+
 <div class="overlay" id="log-overlay">
   <div class="overlay-inner">
     <div class="card-head" style="margin-bottom:18px;">
@@ -839,6 +1127,7 @@ function emptyDB() {
       targetSleepMinutes: 450,
       targetBodyMassKg: null,
       targetProteinPerKg: 2.0,
+      maxHR: null,
       createdAt: new Date().toISOString()
     },
     telemetry: {},
@@ -851,7 +1140,8 @@ function emptyDB() {
     sessions: [],
     protocols: [],
     completions: {},
-    briefings: {}
+    briefings: {},
+    seededWorkouts: false
   };
 }
 
@@ -862,6 +1152,10 @@ function loadDB() {
     const db = JSON.parse(raw);
     if (db && db.version === 1) {
       db.briefings = db.briefings || {};
+      db.workouts = db.workouts || [];
+      db.sessions = db.sessions || [];
+      if (db.operator && db.operator.maxHR === undefined) db.operator.maxHR = null;
+      if (db.seededWorkouts === undefined) db.seededWorkouts = false;
       return db;
     }
     return emptyDB();
@@ -908,6 +1202,8 @@ function readColors() {
   };
 }
 let COLORS = readColors();
+let LAST_ROW = {};
+let LAST_SCORES = {};
 
 function hexToRgba(hex, a) {
   const h = hex.replace("#", "");
@@ -943,10 +1239,30 @@ function baselineFor(field, excludeKey, windowDays) {
   return sum / keys.length;
 }
 
-function computeStrain(trainMin, rpe) {
-  const lp = (trainMin || 0) * (rpe || 0);
-  if (lp <= 0) return 0;
-  return 21 * (1 - Math.exp(-lp / 450));
+/* Strain: RPE-based when the operator logged perceived effort (most
+   accurate). When Garmin supplied minutes and average training HR but
+   no RPE (the normal auto-sync case), fall back to a heart-rate-reserve
+   proxy: %HRR maps to an effective RPE, then runs through the same
+   saturating curve so the two methods land on a comparable scale.
+   Requires the operator's max HR (set once in SYS > Profile). */
+function computeStrain(row) {
+  const trainMin = row.trainingMinutes;
+  if (!trainMin || trainMin <= 0) return { value: 0, method: "none" };
+
+  if (row.sessionRPE != null) {
+    const lp = trainMin * row.sessionRPE;
+    return { value: 21 * (1 - Math.exp(-lp / 450)), method: "rpe" };
+  }
+
+  const maxHR = DB.operator.maxHR;
+  if (row.trainingAvgHR != null && row.restingHR != null && maxHR && maxHR > row.restingHR) {
+    const hrr = clamp01((row.trainingAvgHR - row.restingHR) / (maxHR - row.restingHR));
+    const effRPE = hrr * 10;
+    const lp = trainMin * effRPE;
+    return { value: 21 * (1 - Math.exp(-lp / 450)), method: "hr" };
+  }
+
+  return { value: 0, method: "none" };
 }
 
 function computeScores(row, key) {
@@ -961,9 +1277,13 @@ function computeScores(row, key) {
     hrvDeltaPct: null,
     readiness: null,
     sleepPerf: null,
-    strain: computeStrain(row.trainingMinutes, row.sessionRPE),
+    strain: 0,
+    strainMethod: "none",
     calibrating: hrvBase == null
   };
+  const strainResult = computeStrain(row);
+  out.strain = strainResult.value;
+  out.strainMethod = strainResult.method;
 
   if (row.sleepTotalMin != null) {
     out.sleepPerf = Math.min(100, Math.round(row.sleepTotalMin / target * 100));
@@ -983,10 +1303,22 @@ function computeScores(row, key) {
 
     if (rhrScore != null && sleepScore != null) {
       out.readiness = Math.round(0.50 * hrvScore + 0.25 * rhrScore + 0.25 * sleepScore);
+      out.components = [
+        { label: "HRV vs baseline", weight: 0.50, score: hrvScore },
+        { label: "Resting HR vs baseline", weight: 0.25, score: rhrScore },
+        { label: "Sleep vs target", weight: 0.25, score: sleepScore }
+      ];
     } else if (sleepScore != null) {
       out.readiness = Math.round(0.65 * hrvScore + 0.35 * sleepScore);
+      out.components = [
+        { label: "HRV vs baseline", weight: 0.65, score: hrvScore },
+        { label: "Sleep vs target", weight: 0.35, score: sleepScore }
+      ];
     } else {
       out.readiness = Math.round(hrvScore);
+      out.components = [
+        { label: "HRV vs baseline", weight: 1.00, score: hrvScore }
+      ];
     }
   }
 
@@ -1179,6 +1511,377 @@ function seriesFor(field) {
   });
 }
 
+function fmtSigned(n, digits) {
+  digits = digits || 0;
+  const v = n.toFixed(digits);
+  return (n >= 0 ? "+" : "") + v;
+}
+
+/* ============================================================
+   DETAIL ENGINE
+   Builds the explainer content for every tappable element on
+   Command: hero recovery ring, the three hero chips, each key
+   metric card, and sleep architecture. Reads LAST_ROW/LAST_SCORES
+   so it always matches exactly what is currently on screen.
+   ============================================================ */
+
+function buildDetail(key) {
+  const t = LAST_ROW || {};
+  const s = LAST_SCORES || {};
+  const win = DB.operator.baselineWindowDays;
+  const todayKey = dayKey();
+
+  if (key === "recovery") {
+    const band = bandName(s.readiness);
+    const col = bandColor(s.readiness);
+    const lines = (s.components || []).map(c =>
+      Math.round(c.weight * 100) + "% " + c.label + ": " +
+      (c.score != null ? Math.round(c.score) + "/100" : "--"));
+    return {
+      title: "Recovery",
+      value: s.readiness != null ? s.readiness : "CAL",
+      unit: s.readiness != null ? "/100" : "",
+      badge: band,
+      color: col,
+      def: "Recovery estimates how ready your body is to perform today. It blends " +
+        "HRV against your rolling baseline, resting heart rate against baseline, " +
+        "and sleep against your target, each compared to your last " + win + " days.",
+      breakdown: lines,
+      note: s.readiness == null
+        ? "Still calibrating. Needs at least 3 days of HRV history before it can score."
+        : null
+    };
+  }
+
+  if (key === "systemLoadScore") {
+    const method = s.strainMethod;
+    let line;
+    if (method === "rpe") {
+      line = "Calculated from logged training (" + (t.trainingMinutes || 0) +
+        " min at RPE " + t.sessionRPE + "/10), the most accurate method since " +
+        "it reflects how the session actually felt.";
+    } else if (method === "hr") {
+      line = "Estimated from Garmin heart rate: " + (t.trainingMinutes || 0) +
+        " min at an average of " + Math.round(t.trainingAvgHR || 0) +
+        " bpm, against your max HR of " + DB.operator.maxHR + " bpm. No RPE was " +
+        "logged for this session, so this figure is marked EST.";
+    } else {
+      line = "No training logged today, or not enough data (minutes plus either " +
+        "RPE or Garmin heart rate) to calculate a value.";
+    }
+    return {
+      title: "Strain",
+      value: (s.strain || 0).toFixed(1),
+      unit: "/21",
+      badge: method === "hr" ? "ESTIMATED" : method === "rpe" ? "LOGGED" : "NO DATA",
+      color: COLORS.red,
+      def: "Strain is a 0-21 measure of cardiovascular load for the day, on a " +
+        "saturating scale so very hard sessions approach the ceiling rather than " +
+        "blowing past it.",
+      breakdown: [line]
+    };
+  }
+
+  if (key === "hrvMs") {
+    const base = baselineFor("hrvMs", todayKey, win);
+    const val = t.hrvMs;
+    let line = "Not enough history yet to compare against a baseline.";
+    let badge = "BUILDING";
+    if (base && val != null) {
+      const d = Math.round((val / base - 1) * 100);
+      const ratio = val / base;
+      badge = ratio < 0.88 ? "SUPPRESSED" : ratio < 0.94 ? "BELOW BASE" : "IN RANGE";
+      line = "Your " + win + "-day baseline is " + Math.round(base) + "ms. Today is " +
+        fmtSigned(d) + "% vs baseline, which reads as " +
+        (ratio < 0.88 ? "suppressed, a sign of accumulated fatigue or stress" :
+         ratio < 0.94 ? "slightly below baseline" : "within normal range") + ".";
+    }
+    return {
+      title: "HRV", value: val != null ? Math.round(val) : "--", unit: "ms",
+      badge: badge, color: COLORS.cyan,
+      def: "Heart rate variability measures the variation in time between " +
+        "heartbeats (RMSSD, from Garmin overnight readings). Higher relative to " +
+        "your own baseline generally means better-recovered; lower suggests " +
+        "fatigue, stress, illness, or poor sleep.",
+      breakdown: [line]
+    };
+  }
+
+  if (key === "restingHR") {
+    const base = baselineFor("restingHR", todayKey, win);
+    const val = t.restingHR;
+    let line = "Not enough history yet to compare against a baseline.";
+    let badge = "IN RANGE";
+    if (base && val != null) {
+      const d = Math.round((val / base - 1) * 100);
+      badge = val / base > 1.05 ? "ELEVATED" : "IN RANGE";
+      line = "Your baseline is " + Math.round(base) + " bpm. Today is " +
+        fmtSigned(d) + "%. A resting heart rate meaningfully above baseline is " +
+        "often an early sign of fatigue, dehydration, or oncoming illness.";
+    }
+    return {
+      title: "Resting HR", value: val != null ? Math.round(val) : "--", unit: "bpm",
+      badge: badge, color: COLORS.green,
+      def: "Your lowest heart rate at rest, typically measured overnight. It " +
+        "tends to fall as fitness improves and rise under fatigue, illness, heat, " +
+        "or alcohol.",
+      breakdown: [line]
+    };
+  }
+
+  if (key === "sleepTotalMin") {
+    const val = t.sleepTotalMin;
+    const target = DB.operator.targetSleepMinutes;
+    const perf = s.sleepPerf;
+    let line = "No sleep logged for last night yet.";
+    if (val != null) {
+      line = "You slept " + fmtMin(val) + " against a " + fmtMin(target) +
+        " target, " + (perf >= 100 ? "meeting or exceeding target" :
+        "short of target by " + fmtMin(target - val)) + ".";
+    }
+    return {
+      title: "Sleep", value: val != null ? fmtMin(val) : "--", unit: "",
+      badge: perf != null ? (perf >= 100 ? "TARGET MET" : perf >= 85 ? "SHORT" : "LOW") : "NO DATA",
+      color: COLORS.amber,
+      def: "Total time asleep last night, compared against your target. Sleep is " +
+        "the single biggest lever on recovery, and directly feeds the Recovery score.",
+      breakdown: [line]
+    };
+  }
+
+  if (key === "bodyMassKg") {
+    const val = t.bodyMassKg;
+    const series = seriesFor("bodyMassKg").filter(v => v != null);
+    const first = series[0];
+    const line = (val != null && first != null && series.length > 1)
+      ? "7-day change: " + fmtSigned(val - first, 1) + "kg."
+      : "Not enough recent entries yet to show a weekly trend.";
+    return {
+      title: "Mass", value: val != null ? val.toFixed(1) : "--", unit: "kg",
+      badge: "", color: COLORS.cyan,
+      def: "Body mass from Garmin body composition scans. Day-to-day swings are " +
+        "mostly water and glycogen, so read the weekly trend, not any single number.",
+      breakdown: [line]
+    };
+  }
+
+  if (key === "respiratoryRate") {
+    const base = baselineFor("respiratoryRate", todayKey, win);
+    const val = t.respiratoryRate;
+    const line = (base && val != null)
+      ? "Baseline " + base.toFixed(1) + "/min, today " + val.toFixed(1) + "/min."
+      : "Not enough history yet for a baseline.";
+    return {
+      title: "Respiration", value: val != null ? val.toFixed(1) : "--", unit: "/min",
+      badge: "", color: COLORS.green,
+      def: "Average breathing rate while asleep. A noticeable rise above your own " +
+        "baseline can be an early flag for illness or a heavy training load.",
+      breakdown: [line]
+    };
+  }
+
+  if (key === "sleepArch") {
+    const segs = [
+      { l: "Deep", v: t.sleepDeepMin, note: "Physical recovery, tissue repair, growth hormone release." },
+      { l: "REM", v: t.sleepREMMin, note: "Cognitive recovery, memory consolidation, emotional processing." },
+      { l: "Core", v: t.sleepCoreMin, note: "Light sleep, the bulk of a normal night, general recovery." },
+      { l: "Awake", v: t.sleepAwakeMin, note: "Brief wake periods are normal in small amounts; a high total means fragmented sleep." }
+    ];
+    return {
+      title: "Sleep Architecture",
+      value: t.sleepTotalMin != null ? fmtMin(t.sleepTotalMin) : "--",
+      unit: "", badge: "", color: COLORS.cyan,
+      def: "A breakdown of last night into sleep stages. Different stages serve " +
+        "different recovery functions, so the mix matters as much as the total.",
+      breakdown: segs.map(x => x.l + ": " + (x.v ? fmtMin(x.v) : "--") + " -- " + x.note)
+    };
+  }
+
+  return null;
+}
+
+function openDetail(key) {
+  const d = buildDetail(key);
+  if (!d) return;
+  if (isSim()) {
+    d.note = (d.note ? d.note + " " : "") +
+      "Showing simulated example data, not yours yet.";
+  }
+  document.getElementById("detail-title").textContent = d.title.toUpperCase();
+  const valueEl = document.getElementById("detail-value");
+  valueEl.textContent = d.value;
+  valueEl.style.color = d.color || COLORS.cyan;
+  document.getElementById("detail-unit").textContent = d.unit || "";
+  const badgeEl = document.getElementById("detail-badge");
+  if (d.badge) {
+    badgeEl.textContent = d.badge;
+    badgeEl.style.display = "inline-block";
+    badgeEl.style.background = hexToRgba(d.color || COLORS.cyan, 0.14);
+    badgeEl.style.color = d.color || COLORS.cyan;
+  } else {
+    badgeEl.style.display = "none";
+  }
+  const chartHtml = buildBigChart(key);
+  document.getElementById("detail-chart").innerHTML = chartHtml || "";
+  document.getElementById("detail-chart-days").innerHTML =
+    dayLetters().map(l => "<span>" + l + "</span>").join("");
+
+  document.getElementById("detail-def").textContent = d.def || "";
+  const bd = document.getElementById("detail-breakdown");
+  bd.innerHTML = "";
+  (d.breakdown || []).forEach(line => {
+    const row = document.createElement("div");
+    row.className = "detail-line";
+    row.textContent = line;
+    bd.appendChild(row);
+  });
+  const noteEl = document.getElementById("detail-note");
+  if (d.note) {
+    noteEl.textContent = d.note;
+    noteEl.style.display = "block";
+  } else {
+    noteEl.style.display = "none";
+  }
+  document.getElementById("detail-overlay").classList.add("open");
+}
+
+function closeDetail() {
+  document.getElementById("detail-overlay").classList.remove("open");
+}
+
+function bigLine(values, color) {
+  const n = values.length;
+  const defined = values.map((v, i) => ({ v, i })).filter(p => p.v != null);
+  if (!defined.length) return '<svg class="detail-chart" viewBox="0 0 320 100"></svg>';
+  const vals = defined.map(p => p.v);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const pad = (max - min) * 0.18 || Math.max(1, max * 0.05);
+  const lo = min - pad, hi = max + pad;
+  const x = i => 14 + i * (320 - 28) / Math.max(1, n - 1);
+  const y = v => 90 - (v - lo) / (hi - lo) * 66;
+
+  let d = "", prevIdx = null;
+  defined.forEach(p => {
+    const cmd = (prevIdx != null && p.i === prevIdx + 1) ? "L" : "M";
+    d += cmd + x(p.i).toFixed(1) + " " + y(p.v).toFixed(1) + " ";
+    prevIdx = p.i;
+  });
+  const last = defined[defined.length - 1];
+  const area = defined.length > 1
+    ? '<path d="' + d + "L" + x(last.i).toFixed(1) + " 90 L" +
+      x(defined[0].i).toFixed(1) + ' 90 Z" fill="' + hexToRgba(color, 0.1) + '" stroke="none"></path>'
+    : "";
+  const dots = defined.map(p =>
+    '<circle cx="' + x(p.i).toFixed(1) + '" cy="' + y(p.v).toFixed(1) +
+    '" r="2.6" fill="' + color + '"></circle>').join("");
+  return '<svg class="detail-chart" viewBox="0 0 320 100">' + area +
+    '<path d="' + d + '" fill="none" stroke="' + color +
+    '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>' +
+    dots + "</svg>";
+}
+
+function bigBars(values, color, fixedMax, targetLine) {
+  const n = values.length;
+  const max = fixedMax || Math.max(...values.filter(v => v != null), 1);
+  const slot = (320 - 16) / n, bw = slot * 0.55;
+  let rects = "";
+  values.forEach((v, i) => {
+    const cx = 8 + i * slot + slot / 2;
+    if (v == null || v <= 0) {
+      rects += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="87" width="' +
+        bw.toFixed(1) + '" height="3" rx="1.5" fill="' + hexToRgba(color, 0.18) + '"></rect>';
+    } else {
+      const h = Math.max(4, (v / max) * 70);
+      rects += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + (90 - h).toFixed(1) +
+        '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) +
+        '" rx="3" fill="' + color + '"></rect>';
+    }
+  });
+  let line = "";
+  if (targetLine != null && max) {
+    const ty = 90 - clamp01(targetLine / max) * 70;
+    line = '<line x1="4" y1="' + ty.toFixed(1) + '" x2="316" y2="' + ty.toFixed(1) +
+      '" stroke="' + COLORS.dim + '" stroke-width="1" stroke-dasharray="3,3"></line>';
+  }
+  return '<svg class="detail-chart" viewBox="0 0 320 100">' + line + rects + "</svg>";
+}
+
+function bigStacked(days) {
+  const n = days.length;
+  const maxTotal = Math.max(...days.map(d => (d.deep || 0) + (d.core || 0) + (d.rem || 0) + (d.awake || 0)), 1);
+  const slot = (320 - 16) / n, bw = slot * 0.55;
+  const seg = [["deep", "#2456C9"], ["core", "#3B4552"], ["rem", COLORS.cyan], ["awake", COLORS.red]];
+  let rects = "";
+  days.forEach((d, i) => {
+    const cx = 8 + i * slot + slot / 2;
+    const total = (d.deep || 0) + (d.core || 0) + (d.rem || 0) + (d.awake || 0);
+    if (total <= 0) {
+      rects += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="87" width="' +
+        bw.toFixed(1) + '" height="3" rx="1.5" fill="' + hexToRgba(COLORS.dim, 0.3) + '"></rect>';
+      return;
+    }
+    const scale = 70 / maxTotal;
+    let yBottom = 90;
+    seg.forEach(([key, col]) => {
+      const v = d[key] || 0;
+      if (v <= 0) return;
+      const h = v * scale;
+      const yTop = yBottom - h;
+      rects += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + yTop.toFixed(1) +
+        '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) +
+        '" rx="1.5" fill="' + col + '"></rect>';
+      yBottom = yTop;
+    });
+  });
+  return '<svg class="detail-chart" viewBox="0 0 320 100">' + rects + "</svg>";
+}
+
+function buildBigChart(key) {
+  const sim = isSim();
+  if (key === "recovery") {
+    const series = sim ? SIM.readinessScore.slice() : seriesFor("readinessScore");
+    const lastVal = series.filter(v => v != null).slice(-1)[0];
+    return bigLine(series, bandColor(lastVal != null ? lastVal : null));
+  }
+  if (key === "systemLoadScore") {
+    const series = sim ? SIM.systemLoadScore.slice() : seriesFor("systemLoadScore");
+    return bigBars(series, COLORS.red, 21);
+  }
+  if (key === "hrvMs") {
+    const series = sim ? SIM.hrvMs.slice() : seriesFor("hrvMs");
+    return bigLine(series, COLORS.cyan);
+  }
+  if (key === "restingHR") {
+    const series = sim ? SIM.restingHR.slice() : seriesFor("restingHR");
+    return bigLine(series, COLORS.green);
+  }
+  if (key === "sleepTotalMin") {
+    const series = sim ? SIM.sleepTotalMin.slice() : seriesFor("sleepTotalMin");
+    return bigBars(series, COLORS.amber, DB.operator.targetSleepMinutes * 1.25, DB.operator.targetSleepMinutes);
+  }
+  if (key === "bodyMassKg") {
+    const series = sim ? SIM.bodyMassKg.slice() : seriesFor("bodyMassKg");
+    return bigLine(series, COLORS.cyan);
+  }
+  if (key === "respiratoryRate") {
+    const series = sim ? SIM.respiratoryRate.slice() : seriesFor("respiratoryRate");
+    return bigLine(series, COLORS.green);
+  }
+  if (key === "sleepArch") {
+    const days = last7Keys();
+    const dayObjs = sim
+      ? days.map((k, i) => i === days.length - 1
+          ? { deep: SIM_TODAY.sleepDeepMin, core: SIM_TODAY.sleepCoreMin, rem: SIM_TODAY.sleepREMMin, awake: SIM_TODAY.sleepAwakeMin }
+          : { deep: 0, core: 0, rem: 0, awake: 0 })
+      : days.map(k => {
+          const r = DB.telemetry[k] || {};
+          return { deep: r.sleepDeepMin || 0, core: r.sleepCoreMin || 0, rem: r.sleepREMMin || 0, awake: r.sleepAwakeMin || 0 };
+        });
+    return bigStacked(dayObjs);
+  }
+  return null;
+}
+
 function dayLetters() {
   const L = ["S", "M", "T", "W", "T", "F", "S"];
   const now = new Date();
@@ -1199,7 +1902,8 @@ const SIM = {
   sleepTotalMin: [432, 415, 468, 451, 440, 470, 462],
   systemLoadScore: [8.2, 12.5, 0, 14.1, 6.4, 0, 13.0],
   respiratoryRate: [15.1, 14.9, 15.0, 14.7, 14.8, 14.6, 14.8],
-  bodyMassKg: [84.6, 84.5, 84.5, 84.3, 84.4, 84.2, 84.1]
+  bodyMassKg: [84.6, 84.5, 84.5, 84.3, 84.4, 84.2, 84.1],
+  readinessScore: [74, 79, 68, 85, 77, 88, 82]
 };
 const SIM_TODAY = {
   hrvMs: 84, restingHR: 44, respiratoryRate: 14.8,
@@ -1246,6 +1950,8 @@ function renderHero(t, s, sim) {
 
   const strain = s.strain || 0;
   document.getElementById("chip-strain").textContent = strain.toFixed(1);
+  document.getElementById("chip-strain-sub").textContent =
+    "/21" + (s.strainMethod === "hr" ? " EST" : "");
   document.getElementById("chip-hrv").textContent = t.hrvMs != null ? Math.round(t.hrvMs) : "--";
   document.getElementById("chip-hrv-sub").textContent =
     s.hrvDeltaPct != null ? "MS " + (s.hrvDeltaPct >= 0 ? "+" : "") + s.hrvDeltaPct + "%" : "MS";
@@ -1331,7 +2037,9 @@ function renderMetrics() {
       : sparkLine(series, color);
 
     const card = document.createElement("div");
-    card.className = "metric-card";
+    card.className = "metric-card clickable";
+    card.dataset.detail = m.field;
+    card.addEventListener("click", () => openDetail(m.field));
     card.innerHTML =
       '<div class="mc-head"><span class="mc-label">' + m.label + "</span>" +
       '<span class="badge" style="background:' + hexToRgba(badge.col, 0.14) +
@@ -1383,6 +2091,9 @@ function renderCommand() {
   const s = sim ? SIM_SCORES : computeScores(t, row ? key : "");
 
   document.querySelectorAll("[data-sim]").forEach(el => { el.hidden = !sim; });
+
+  LAST_ROW = t;
+  LAST_SCORES = s;
 
   renderHero(t, s, sim);
   renderMetrics();
@@ -1458,6 +2169,7 @@ function saveLog() {
   const s = computeScores(row, key);
   row.readinessScore = s.readiness;
   row.systemLoadScore = Math.round(s.strain * 10) / 10;
+  row.strainMethod = s.strainMethod;
 
   DB.telemetry[key] = row;
   saveDB(DB);
@@ -1573,6 +2285,7 @@ async function syncNow() {
     const sc = computeScores(r, k);
     r.readinessScore = sc.readiness;
     r.systemLoadScore = Math.round(sc.strain * 10) / 10;
+    r.strainMethod = sc.strainMethod;
   });
   cfg.lastSync = new Date().toISOString();
   saveSyncConfig(cfg);
@@ -1592,6 +2305,35 @@ function renderUplink() {
     ? "LAST " + cfg.lastSync.slice(5, 16).replace("T", " ")
     : "";
 }
+
+function renderProfile() {
+  document.getElementById("prof-maxhr").value = DB.operator.maxHR || "";
+}
+
+document.getElementById("btn-save-profile").addEventListener("click", () => {
+  const v = Number(document.getElementById("prof-maxhr").value);
+  const st = document.getElementById("profile-status");
+  if (!Number.isFinite(v) || v < 100 || v > 230) {
+    st.textContent = "ENTER A VALID BPM";
+    st.style.color = COLORS.red;
+    return;
+  }
+  DB.operator.maxHR = v;
+  let updated = 0;
+  Object.keys(DB.telemetry).forEach(k => {
+    const r = DB.telemetry[k];
+    if (r.sessionRPE == null && r.trainingAvgHR != null) {
+      const res = computeStrain(r);
+      r.systemLoadScore = Math.round(res.value * 10) / 10;
+      r.strainMethod = res.method;
+      updated++;
+    }
+  });
+  saveDB(DB);
+  renderCommand();
+  st.textContent = "SAVED. " + updated + " DAY(S) RECALCULATED.";
+  st.style.color = COLORS.green;
+});
 
 document.getElementById("btn-save-uplink").addEventListener("click", () => {
   const cfg = loadSyncConfig() || {};
@@ -1797,33 +2539,556 @@ document.getElementById("import-file").addEventListener("change", (ev) => {
     try {
       const incoming = JSON.parse(reader.result);
       if (!incoming || incoming.version !== 1) {
-        alert("Import rejected: unsupported DB version.");
+        document.getElementById("import-status").textContent = "Import rejected: unsupported DB version.";
+        document.getElementById("import-status").style.color = COLORS.red;
         return;
       }
       incoming.briefings = incoming.briefings || {};
+      incoming.workouts = incoming.workouts || [];
+      incoming.sessions = incoming.sessions || [];
       DB = incoming;
       saveDB(DB);
       renderCommand();
+      document.getElementById("import-status").textContent = "Import successful.";
+      document.getElementById("import-status").style.color = COLORS.green;
     } catch (e) {
-      alert("Import rejected: file is not valid Bio-Command JSON.");
+      document.getElementById("import-status").textContent = "Import rejected: file is not valid Bio-Command JSON.";
+      document.getElementById("import-status").style.color = COLORS.red;
     }
   };
   reader.readAsText(file);
   ev.target.value = "";
 });
 
-document.getElementById("btn-wipe").addEventListener("click", () => {
-  if (confirm("Wipe local DB? This deletes all logged data on this device.")) {
+document.getElementById("btn-wipe").addEventListener("click", (ev) => {
+  armDangerButton(ev.currentTarget, "Wipe", () => {
     Storage.remove(DB_KEY);
     DB = emptyDB();
     saveDB(DB);
     renderCommand();
-  }
+  });
 });
 
 /* ============================================================
    SHELL: tabs, SYS, header, theme
    ============================================================ */
+
+/* ============================================================
+   TRAIN MODULE
+   Templates (workouts) hold prescriptions; sessions are the
+   immutable execution log. Finishing a session writes duration
+   and average RPE straight into today's telemetry row, so
+   strain is computed from what you actually lifted rather than
+   a manual estimate.
+   ============================================================ */
+
+function armDangerButton(btn, actionLabel, doAction) {
+  if (btn.dataset.armed === "1") {
+    clearTimeout(Number(btn.dataset.armTimer));
+    btn.dataset.armed = "0";
+    btn.textContent = actionLabel;
+    doAction();
+    return;
+  }
+  btn.dataset.armed = "1";
+  const original = btn.textContent;
+  btn.textContent = "TAP AGAIN TO CONFIRM";
+  const t = setTimeout(() => {
+    btn.dataset.armed = "0";
+    btn.textContent = original;
+  }, 3500);
+  btn.dataset.armTimer = String(t);
+}
+
+function genId(prefix) {
+  return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function seedDefaultWorkouts() {
+  if (DB.seededWorkouts || DB.workouts.length > 0) return;
+  const mk = (name, focus, exercises) => ({
+    id: genId("wk"), name, focus, progression: "doubleProgression",
+    isArchived: false, createdAt: new Date().toISOString(),
+    exercises: exercises.map((e, i) => ({ id: genId("ex"), order: i, ...e }))
+  });
+  DB.workouts.push(
+    mk("OP: LOWER HEAVY", "Lower / Posterior", [
+      { name: "Back Squat", targetSets: 4, repLow: 5, repHigh: 8, targetRPE: 8, restSec: 180, loadIncrementKg: 2.5 },
+      { name: "Romanian Deadlift", targetSets: 3, repLow: 8, repHigh: 10, targetRPE: 8, restSec: 120, loadIncrementKg: 2.5 },
+      { name: "Walking Lunge", targetSets: 3, repLow: 10, repHigh: 12, targetRPE: 7, restSec: 90, loadIncrementKg: 2.5 },
+      { name: "Calf Raise", targetSets: 3, repLow: 12, repHigh: 15, targetRPE: 8, restSec: 60, loadIncrementKg: 2.5 }
+    ]),
+    mk("OP: PUSH", "Chest / Shoulders / Triceps", [
+      { name: "Bench Press", targetSets: 4, repLow: 5, repHigh: 8, targetRPE: 8, restSec: 180, loadIncrementKg: 2.5 },
+      { name: "Overhead Press", targetSets: 3, repLow: 6, repHigh: 10, targetRPE: 8, restSec: 120, loadIncrementKg: 2.5 },
+      { name: "Incline Dumbbell Press", targetSets: 3, repLow: 8, repHigh: 12, targetRPE: 7, restSec: 90, loadIncrementKg: 2 },
+      { name: "Triceps Pushdown", targetSets: 3, repLow: 10, repHigh: 15, targetRPE: 8, restSec: 60, loadIncrementKg: 2 }
+    ]),
+    mk("OP: PULL", "Back / Biceps", [
+      { name: "Deadlift", targetSets: 3, repLow: 3, repHigh: 6, targetRPE: 8, restSec: 210, loadIncrementKg: 5 },
+      { name: "Pull-Up", targetSets: 4, repLow: 6, repHigh: 10, targetRPE: 8, restSec: 120, loadIncrementKg: 0 },
+      { name: "Barbell Row", targetSets: 3, repLow: 8, repHigh: 10, targetRPE: 8, restSec: 120, loadIncrementKg: 2.5 },
+      { name: "Barbell Curl", targetSets: 3, repLow: 10, repHigh: 12, targetRPE: 7, restSec: 60, loadIncrementKg: 1.25 }
+    ])
+  );
+  DB.seededWorkouts = true;
+  saveDB(DB);
+}
+
+/* ---------- Workout list (Train home) ---------- */
+
+function lastPerformedLabel(workoutId) {
+  const sessions = DB.sessions.filter(s => s.workoutId === workoutId).sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  if (!sessions.length) return "Not yet performed";
+  const days = Math.floor((Date.now() - new Date(sessions[0].startedAt).getTime()) / 86400000);
+  if (days <= 0) return "Last: today";
+  if (days === 1) return "Last: yesterday";
+  return "Last: " + days + "d ago";
+}
+
+function renderWorkoutList() {
+  seedDefaultWorkouts();
+  const host = document.getElementById("workout-list");
+  const active = DB.workouts.filter(w => !w.isArchived);
+  if (!active.length) {
+    host.innerHTML = '<div class="empty-hint">No workouts yet. Tap New to build one.</div>';
+    return;
+  }
+  host.innerHTML = active.map(w => {
+    const exLines = w.exercises.map(e =>
+      e.name + " &middot; " + e.targetSets + "x" + e.repLow + "-" + e.repHigh
+    ).join("<br>");
+    return '<div class="hud-card workout-card">' +
+      '<div class="wk-head"><span class="wk-name">' + w.name + '</span>' +
+      '<span class="spacer"></span><span class="wk-focus">' + (w.focus || "") + '</span></div>' +
+      '<div class="wk-exlist">' + exLines + '</div>' +
+      '<div class="telemetry cap t3">' + lastPerformedLabel(w.id) + '</div>' +
+      '<div class="wk-actions">' +
+      '<button class="tac-btn primary" data-start="' + w.id + '" style="flex:2;">Start</button>' +
+      '<button class="tac-btn" data-edit="' + w.id + '" style="flex:1;">Edit</button>' +
+      '</div></div>';
+  }).join("");
+}
+
+document.getElementById("workout-list").addEventListener("click", (ev) => {
+  const startId = ev.target.dataset.start;
+  const editId = ev.target.dataset.edit;
+  if (startId) startSession(startId);
+  if (editId) openBuilder(editId);
+});
+
+document.getElementById("btn-new-workout").addEventListener("click", () => openBuilder(null));
+
+/* ---------- Session history ---------- */
+
+function renderSessionList() {
+  const host = document.getElementById("session-list");
+  const recent = DB.sessions.slice().sort((a, b) => b.startedAt.localeCompare(a.startedAt)).slice(0, 8);
+  if (!recent.length) {
+    host.innerHTML = '<div class="empty-hint">No sessions logged yet.</div>';
+    return;
+  }
+  host.innerHTML = recent.map(sess => {
+    const d = new Date(sess.startedAt);
+    const dstr = String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0");
+    const setCount = sess.sets.length;
+    return '<div class="session-row">' +
+      '<span class="sr-date">' + dstr + '</span>' +
+      '<span class="sr-name">' + sess.workoutName + '</span>' +
+      '<span class="sr-meta">' + setCount + ' sets &middot; ' +
+      (sess.durationMin != null ? sess.durationMin + " min" : "--") +
+      (sess.sessionRPE != null ? " &middot; RPE " + sess.sessionRPE : "") + '</span>' +
+      '</div>';
+  }).join("");
+}
+
+/* ---------- Builder ---------- */
+
+let builderExercises = [];
+let builderEditId = null;
+
+function renderExRows() {
+  const host = document.getElementById("ex-rows");
+  host.innerHTML = builderExercises.map((e, i) =>
+    '<div class="ex-row" data-idx="' + i + '">' +
+    '<button class="ex-remove" data-remove="' + i + '">&times;</button>' +
+    '<input class="tac-input" data-field="name" data-idx="' + i + '" placeholder="Exercise name" value="' +
+      (e.name || "").replace(/"/g, "&quot;") + '">' +
+    '<div class="ex-row-grid">' +
+    '<div><label class="ex-field-lbl">Sets</label><input class="tac-input" type="number" min="1" step="1" data-field="targetSets" data-idx="' + i + '" value="' + (e.targetSets ?? "") + '"></div>' +
+    '<div><label class="ex-field-lbl">Rep low</label><input class="tac-input" type="number" min="1" step="1" data-field="repLow" data-idx="' + i + '" value="' + (e.repLow ?? "") + '"></div>' +
+    '<div><label class="ex-field-lbl">Rep high</label><input class="tac-input" type="number" min="1" step="1" data-field="repHigh" data-idx="' + i + '" value="' + (e.repHigh ?? "") + '"></div>' +
+    '<div><label class="ex-field-lbl">Target RPE</label><input class="tac-input" type="number" min="1" max="10" step="0.5" data-field="targetRPE" data-idx="' + i + '" value="' + (e.targetRPE ?? "") + '"></div>' +
+    '<div><label class="ex-field-lbl">Rest sec</label><input class="tac-input" type="number" min="0" step="15" data-field="restSec" data-idx="' + i + '" value="' + (e.restSec ?? "") + '"></div>' +
+    '<div><label class="ex-field-lbl">Load step kg</label><input class="tac-input" type="number" min="0" step="0.25" data-field="loadIncrementKg" data-idx="' + i + '" value="' + (e.loadIncrementKg ?? "") + '"></div>' +
+    '</div></div>'
+  ).join("");
+}
+
+document.getElementById("ex-rows").addEventListener("input", (ev) => {
+  const idx = Number(ev.target.dataset.idx);
+  const field = ev.target.dataset.field;
+  if (Number.isNaN(idx) || !field) return;
+  const v = ev.target.value;
+  builderExercises[idx][field] = field === "name" ? v : (v === "" ? null : Number(v));
+});
+
+document.getElementById("ex-rows").addEventListener("click", (ev) => {
+  const rm = ev.target.dataset.remove;
+  if (rm == null) return;
+  builderExercises.splice(Number(rm), 1);
+  renderExRows();
+});
+
+document.getElementById("btn-add-exercise").addEventListener("click", () => {
+  builderExercises.push({ name: "", targetSets: 3, repLow: 8, repHigh: 12, targetRPE: 8, restSec: 90, loadIncrementKg: 2.5 });
+  renderExRows();
+});
+
+function openBuilder(workoutId) {
+  builderEditId = workoutId;
+  const delBtn = document.getElementById("btn-delete-workout");
+  if (workoutId) {
+    const w = DB.workouts.find(x => x.id === workoutId);
+    document.getElementById("builder-title").textContent = "Edit Workout";
+    document.getElementById("wk-name").value = w.name;
+    document.getElementById("wk-focus").value = w.focus || "";
+    builderExercises = w.exercises.map(e => ({ ...e }));
+    delBtn.style.display = "block";
+  } else {
+    document.getElementById("builder-title").textContent = "New Workout";
+    document.getElementById("wk-name").value = "";
+    document.getElementById("wk-focus").value = "";
+    builderExercises = [];
+    delBtn.style.display = "none";
+  }
+  document.getElementById("builder-status").textContent = "";
+  renderExRows();
+  document.getElementById("builder-overlay").classList.add("open");
+}
+
+document.getElementById("btn-cancel-builder").addEventListener("click", () => {
+  document.getElementById("builder-overlay").classList.remove("open");
+});
+
+document.getElementById("btn-save-workout").addEventListener("click", () => {
+  const statusEl = document.getElementById("builder-status");
+  statusEl.textContent = "";
+  const name = document.getElementById("wk-name").value.trim();
+  if (!name) {
+    statusEl.textContent = "Name the workout first.";
+    statusEl.style.color = COLORS.red;
+    return;
+  }
+  const clean = builderExercises
+    .filter(e => e.name && e.name.trim())
+    .map((e, i) => ({
+      id: e.id || genId("ex"), order: i, name: e.name.trim(),
+      targetSets: e.targetSets || 3, repLow: e.repLow || 1, repHigh: e.repHigh || (e.repLow || 1),
+      targetRPE: e.targetRPE || null, restSec: e.restSec || 90, loadIncrementKg: e.loadIncrementKg || 0
+    }));
+  if (!clean.length) {
+    statusEl.textContent = "Add at least one exercise.";
+    statusEl.style.color = COLORS.red;
+    return;
+  }
+
+  if (builderEditId) {
+    const w = DB.workouts.find(x => x.id === builderEditId);
+    w.name = name; w.focus = document.getElementById("wk-focus").value.trim();
+    w.exercises = clean;
+  } else {
+    DB.workouts.push({
+      id: genId("wk"), name, focus: document.getElementById("wk-focus").value.trim(),
+      progression: "doubleProgression", isArchived: false,
+      createdAt: new Date().toISOString(), exercises: clean
+    });
+  }
+  saveDB(DB);
+  document.getElementById("builder-overlay").classList.remove("open");
+  renderWorkoutList();
+});
+
+document.getElementById("btn-delete-workout").addEventListener("click", (ev) => {
+  if (!builderEditId) return;
+  armDangerButton(ev.currentTarget, "Delete", () => {
+    DB.workouts = DB.workouts.filter(w => w.id !== builderEditId);
+    saveDB(DB);
+    document.getElementById("builder-overlay").classList.remove("open");
+    renderWorkoutList();
+  });
+});
+
+/* ---------- Execution ---------- */
+
+let exec = null; // { workout, startedAt, exSets: {exId: [{loadKg,reps,rpe,completed,completedAt}]}, restHandle, elapsedHandle }
+
+function lastPerformance(exerciseName) {
+  const past = DB.sessions
+    .filter(sess => sess.sets.some(st => st.exerciseName === exerciseName))
+    .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  if (!past.length) return null;
+  const sets = past[0].sets.filter(st => st.exerciseName === exerciseName);
+  const top = sets.reduce((a, b) => (b.loadKg > a.loadKg ? b : a), sets[0]);
+  return { sets, top, date: past[0].startedAt };
+}
+
+function suggestLoad(prescription, last) {
+  if (!last) return { load: null, reason: "No prior data. Pick a load you can control for the full rep range." };
+  const hitTop = last.top.reps >= prescription.repHigh;
+  const rpeOk = last.top.rpe == null || prescription.targetRPE == null || last.top.rpe <= prescription.targetRPE;
+  if (hitTop && rpeOk && prescription.loadIncrementKg > 0) {
+    const next = last.top.loadKg + prescription.loadIncrementKg;
+    return { load: next, reason: "Hit top of range last time at target RPE. +" + prescription.loadIncrementKg + "kg." };
+  }
+  return { load: last.top.loadKg, reason: "Repeat the load, push for more reps or better RPE." };
+}
+
+function epley1RM(loadKg, reps) {
+  return loadKg * (1 + reps / 30);
+}
+
+function priorBest1RM(exerciseName, excludeSessionId) {
+  let best = 0;
+  DB.sessions.forEach(sess => {
+    if (sess.id === excludeSessionId) return;
+    sess.sets.forEach(st => {
+      if (st.exerciseName === exerciseName) {
+        const e1 = epley1RM(st.loadKg, st.reps);
+        if (e1 > best) best = e1;
+      }
+    });
+  });
+  return best;
+}
+
+function findExercise(exId) {
+  if (!exec) return null;
+  return exec.workout.exercises.find(e => e.id === exId) || null;
+}
+
+function setRowHtml(exId, idx, row, prevLabel) {
+  return '<div class="set-row' + (row.completed ? " done" : "") + '" data-exid="' + exId + '" data-setidx="' + idx + '">' +
+    '<span class="sc-num">' + (idx + 1) + '</span>' +
+    '<span class="sc-prev">' + prevLabel + '</span>' +
+    '<input class="sc-input sc-load" type="number" inputmode="decimal" step="0.5" value="' + (row.loadKg ?? "") + '"' + (row.completed ? " disabled" : "") + '>' +
+    '<input class="sc-input sc-reps" type="number" inputmode="numeric" step="1" value="' + (row.reps ?? "") + '"' + (row.completed ? " disabled" : "") + '>' +
+    '<input class="sc-input sc-rpe" type="number" inputmode="decimal" min="1" max="10" step="0.5" value="' + (row.rpe ?? "") + '"' + (row.completed ? " disabled" : "") + '>' +
+    '<button class="sc-check" data-check>' + (row.completed ? "&#10003;" : "") + '</button>' +
+    '</div>';
+}
+
+function renderExecBody() {
+  const w = exec.workout;
+  const host = document.getElementById("exec-exercise-list");
+  host.innerHTML = w.exercises.map(e => {
+    const last = lastPerformance(e.name);
+    const rows = exec.exSets[e.id];
+    const rowsHtml = rows.map((row, idx) => {
+      const prevLabel = (last && last.sets[idx])
+        ? last.sets[idx].loadKg + "x" + last.sets[idx].reps
+        : "--";
+      return setRowHtml(e.id, idx, row, prevLabel);
+    }).join("");
+    return '<div class="exec-ex-card">' +
+      '<div class="exec-ex-head">' +
+      '<span class="exec-ex-title">' + e.name + '</span>' +
+      '<span class="exec-ex-sub">' + e.targetSets + "x" + e.repLow + "-" + e.repHigh +
+      (e.targetRPE ? " @ RPE " + e.targetRPE : "") + " &middot; rest " + e.restSec + "s</span>" +
+      '</div>' +
+      '<div class="set-row set-row-head"><span>SET</span><span>PREV</span><span>KG</span><span>REPS</span><span>RPE</span><span></span></div>' +
+      '<div class="set-rows" data-exrows="' + e.id + '">' + rowsHtml + '</div>' +
+      '<button class="add-set-btn" data-add="' + e.id + '">+ ADD SET</button>' +
+      '</div>';
+  }).join("");
+  updateExecStats();
+}
+
+function updateExecStats() {
+  if (!exec) return;
+  let volume = 0;
+  Object.values(exec.exSets).forEach(rows => {
+    rows.forEach(r => { if (r.completed) volume += (r.loadKg || 0) * (r.reps || 0); });
+  });
+  document.getElementById("exec-volume").textContent = Math.round(volume) + "KG";
+  const elapsedSec = Math.floor((Date.now() - exec.startedAt) / 1000);
+  const m = Math.floor(elapsedSec / 60), sec = elapsedSec % 60;
+  document.getElementById("exec-elapsed").textContent = m + ":" + String(sec).padStart(2, "0");
+}
+
+function startSession(workoutId) {
+  const w = DB.workouts.find(x => x.id === workoutId);
+  if (!w) return;
+  const exSets = {};
+  w.exercises.forEach(e => {
+    const last = lastPerformance(e.name);
+    const sug = suggestLoad(e, last);
+    const rows = [];
+    for (let i = 0; i < e.targetSets; i++) {
+      rows.push({ loadKg: sug.load, reps: e.repHigh, rpe: null, completed: false, completedAt: null });
+    }
+    exSets[e.id] = rows;
+  });
+  exec = { workout: w, startedAt: Date.now(), exSets, restHandle: null, elapsedHandle: null };
+  document.getElementById("exec-workout-name").textContent = w.name.toUpperCase();
+  document.getElementById("exec-done-screen").style.display = "none";
+  document.getElementById("exec-exercise-list").style.display = "block";
+  document.getElementById("exec-restbar").style.display = "none";
+  document.getElementById("exec-overlay").classList.add("open");
+  renderExecBody();
+  clearInterval(exec.elapsedHandle);
+  exec.elapsedHandle = setInterval(updateExecStats, 1000);
+}
+
+function startFloatingRest(seconds) {
+  clearInterval(exec.restHandle);
+  let remaining = seconds;
+  const bar = document.getElementById("exec-restbar");
+  const timeEl = document.getElementById("rb-time");
+  bar.style.display = "flex";
+  const m0 = Math.floor(remaining / 60), s0 = remaining % 60;
+  timeEl.textContent = m0 + ":" + String(s0).padStart(2, "0");
+  exec.restHandle = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(exec.restHandle);
+      bar.style.display = "none";
+      return;
+    }
+    const m = Math.floor(remaining / 60), sec = remaining % 60;
+    timeEl.textContent = m + ":" + String(sec).padStart(2, "0");
+  }, 1000);
+}
+
+document.getElementById("exec-exercise-list").addEventListener("input", (ev) => {
+  const row = ev.target.closest(".set-row");
+  if (!row) return;
+  const exId = row.dataset.exid, idx = Number(row.dataset.setidx);
+  const state = exec.exSets[exId][idx];
+  if (ev.target.classList.contains("sc-load")) state.loadKg = ev.target.value === "" ? null : Number(ev.target.value);
+  if (ev.target.classList.contains("sc-reps")) state.reps = ev.target.value === "" ? null : Number(ev.target.value);
+  if (ev.target.classList.contains("sc-rpe")) state.rpe = ev.target.value === "" ? null : Number(ev.target.value);
+});
+
+document.getElementById("exec-exercise-list").addEventListener("click", (ev) => {
+  const addId = ev.target.dataset.add;
+  if (addId) {
+    const rows = exec.exSets[addId];
+    const lastRow = rows[rows.length - 1];
+    rows.push({ loadKg: lastRow ? lastRow.loadKg : null, reps: lastRow ? lastRow.reps : null, rpe: null, completed: false, completedAt: null });
+    const container = document.querySelector('[data-exrows="' + addId + '"]');
+    const last = lastPerformance(findExercise(addId).name);
+    const idx = rows.length - 1;
+    const prevLabel = (last && last.sets[idx]) ? last.sets[idx].loadKg + "x" + last.sets[idx].reps : "--";
+    container.insertAdjacentHTML("beforeend", setRowHtml(addId, idx, rows[idx], prevLabel));
+    return;
+  }
+  if (ev.target.hasAttribute("data-check")) {
+    const row = ev.target.closest(".set-row");
+    const exId = row.dataset.exid, idx = Number(row.dataset.setidx);
+    const state = exec.exSets[exId][idx];
+    state.completed = !state.completed;
+    if (state.completed) {
+      state.completedAt = new Date().toISOString();
+      row.classList.add("done");
+      ev.target.innerHTML = "&#10003;";
+      row.querySelectorAll(".sc-input").forEach(el => el.disabled = true);
+      const ex = findExercise(exId);
+      if (ex && ex.restSec > 0) startFloatingRest(ex.restSec);
+    } else {
+      state.completedAt = null;
+      row.classList.remove("done");
+      ev.target.innerHTML = "";
+      row.querySelectorAll(".sc-input").forEach(el => el.disabled = false);
+    }
+    updateExecStats();
+  }
+});
+
+function finishSession() {
+  clearInterval(exec.restHandle);
+  clearInterval(exec.elapsedHandle);
+  document.getElementById("exec-restbar").style.display = "none";
+
+  const durationMin = Math.max(1, Math.round((Date.now() - exec.startedAt) / 60000));
+  const sets = [];
+  exec.workout.exercises.forEach(e => {
+    exec.exSets[e.id].forEach((row, i) => {
+      if (row.completed) {
+        sets.push({ order: sets.length, exerciseName: e.name, loadKg: row.loadKg || 0, reps: row.reps || 0, rpe: row.rpe, completedAt: row.completedAt });
+      }
+    });
+  });
+  const rpes = sets.map(s => s.rpe).filter(v => v != null);
+  const avgRPE = rpes.length ? Math.round((rpes.reduce((a, b) => a + b, 0) / rpes.length) * 2) / 2 : null;
+
+  const sessionId = genId("sess");
+  const session = {
+    id: sessionId, dayKey: dayKey(), startedAt: new Date(exec.startedAt).toISOString(),
+    workoutId: exec.workout.id, workoutName: exec.workout.name,
+    durationMin, sessionRPE: avgRPE, sets
+  };
+  DB.sessions.push(session);
+
+  const prLines = [];
+  const byExercise = {};
+  sets.forEach(s => { (byExercise[s.exerciseName] = byExercise[s.exerciseName] || []).push(s); });
+  Object.keys(byExercise).forEach(name => {
+    const prior = priorBest1RM(name, sessionId);
+    if (prior <= 0) return;
+    const best = byExercise[name].reduce((a, b) => epley1RM(b.loadKg, b.reps) > epley1RM(a.loadKg, a.reps) ? b : a);
+    if (epley1RM(best.loadKg, best.reps) > prior) {
+      prLines.push(name + ": " + best.loadKg + "kg x " + best.reps + " (est 1RM " + Math.round(epley1RM(best.loadKg, best.reps)) + "kg)");
+    }
+  });
+
+  const key = dayKey();
+  const existing = DB.telemetry[key] || {};
+  const row = {
+    ...existing, dayKey: key,
+    trainingMinutes: durationMin, sessionRPE: avgRPE,
+    source: existing.source || "manual", scoreVersion: 2, updatedAt: new Date().toISOString()
+  };
+  const sc = computeScores(row, key);
+  row.readinessScore = sc.readiness;
+  row.systemLoadScore = Math.round(sc.strain * 10) / 10;
+  row.strainMethod = sc.strainMethod;
+  DB.telemetry[key] = row;
+
+  saveDB(DB);
+  renderCommand();
+  renderWorkoutList();
+  renderSessionList();
+
+  document.getElementById("exec-exercise-list").style.display = "none";
+  document.getElementById("exec-done-screen").style.display = "block";
+  const volume = sets.reduce((a, s) => a + s.loadKg * s.reps, 0);
+  let summary = sets.length + " sets logged over " + durationMin + " min, " + Math.round(volume) + "kg total volume" +
+    (avgRPE != null ? ", average RPE " + avgRPE : "") + ". Strain updated on Command.";
+  if (prLines.length) {
+    summary += '<br><br><span class="pr-line">NEW PR' + (prLines.length > 1 ? "S" : "") + ":<br>" + prLines.join("<br>") + "</span>";
+  }
+  document.getElementById("exec-summary").innerHTML = summary;
+
+  exec = null;
+}
+
+document.getElementById("btn-end-session").addEventListener("click", () => {
+  if (!exec) return;
+  const anyCompleted = Object.values(exec.exSets).some(rows => rows.some(r => r.completed));
+  if (!anyCompleted) {
+    clearInterval(exec.restHandle);
+    clearInterval(exec.elapsedHandle);
+    document.getElementById("exec-overlay").classList.remove("open");
+    exec = null;
+    return;
+  }
+  finishSession();
+});
+
+document.getElementById("btn-close-exec").addEventListener("click", () => {
+  document.getElementById("exec-overlay").classList.remove("open");
+});
 
 function showView(id) {
   document.querySelectorAll("section.view").forEach(v => v.classList.remove("active"));
@@ -1831,6 +3096,7 @@ function showView(id) {
   document.querySelectorAll("nav.tabbar button").forEach(b =>
     b.classList.toggle("active", b.dataset.view === id));
   window.scrollTo(0, 0);
+  if (id === "view-training") { renderWorkoutList(); renderSessionList(); }
 }
 
 document.querySelectorAll("nav.tabbar button").forEach(btn => {
@@ -1871,8 +3137,26 @@ btnTheme.addEventListener("click", () => {
    BOOT
    ============================================================ */
 
+const heroRingHook = document.getElementById("hero-ring-hook");
+if (heroRingHook) {
+  heroRingHook.classList.add("clickable");
+  heroRingHook.addEventListener("click", () => openDetail("recovery"));
+}
+document.querySelectorAll(".stat-chip[data-detail]").forEach(el => {
+  el.classList.add("clickable");
+  el.addEventListener("click", () => openDetail(el.dataset.detail));
+});
+const sleepArchCard = document.getElementById("sleep-arch-card");
+if (sleepArchCard) {
+  sleepArchCard.classList.add("clickable");
+  sleepArchCard.addEventListener("click", () => openDetail("sleepArch"));
+}
+document.getElementById("btn-close-detail").addEventListener("click", closeDetail);
+
 renderUplink();
+renderProfile();
 renderDataCard();
+seedDefaultWorkouts();
 applyTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
 if (loadSyncConfig() && (loadSyncConfig() || {}).pass) {
   syncNow();
