@@ -26,7 +26,7 @@ try {
 <body>
 
 <header class="console">
-  <div class="sys-id">BIO-COMMAND <span class="ver">v1.0</span></div>
+  <div class="sys-id">BIO-COMMAND <span class="ver">v2.1</span></div>
   <div class="hdr-right">
     <span class="cloud-dot" id="hdr-cloud-dot" title="Cloud sync" style="width:7px;height:7px;"></span>
     <span class="sync-dot" id="sync-dot" title="Garmin uplink"></span>
@@ -232,6 +232,12 @@ try {
         <input class="tac-input" id="fuel-log-input" type="text" placeholder="What did you eat?"
                autocapitalize="off" autocorrect="off" style="font-size:14px;">
         <button class="tac-btn primary" id="btn-fuel-log">Log</button>
+      </div>
+      <div class="fuel-scan-row">
+        <button class="tac-btn fuel-scan-btn" id="btn-barcode-scan" type="button">
+          <span class="barcode-icon" aria-hidden="true"></span> Scan barcode
+        </button>
+        <span class="telemetry cap t3">PACKAGED FOOD · OPEN FOOD FACTS</span>
       </div>
       <div class="telemetry cap t3" id="fuel-log-status" style="margin-top:6px;"></div>
     </div>
@@ -855,6 +861,56 @@ try {
   </div>
 </div>
 
+
+<!-- Barcode scanner overlay -->
+<div class="overlay overlay-flex" id="barcode-overlay" aria-hidden="true">
+  <div class="exec-header">
+    <span class="hud-label" style="flex:1;">Barcode Scanner</span>
+    <button class="tac-btn" id="btn-barcode-close" type="button" style="min-height:36px;padding:7px 13px;">Close</button>
+  </div>
+  <div class="exec-body barcode-body">
+    <div class="hud-card">
+      <div class="barcode-viewfinder" id="barcode-reader"></div>
+      <div class="barcode-scan-line" aria-hidden="true"></div>
+      <div class="telemetry cap t3 barcode-help" id="barcode-status">Point the rear camera at a product barcode.</div>
+      <div class="barcode-manual-row">
+        <input class="tac-input" id="barcode-manual" type="text" inputmode="numeric" autocomplete="off" placeholder="Enter barcode manually">
+        <button class="tac-btn" id="btn-barcode-lookup" type="button">Look up</button>
+      </div>
+    </div>
+
+    <div class="hud-card barcode-result" id="barcode-result" hidden>
+      <div class="card-head">
+        <span class="status-dot" style="color:var(--green)"></span>
+        <span class="hud-label">Product Found</span>
+      </div>
+      <div class="barcode-product-head">
+        <img id="barcode-product-image" alt="" hidden>
+        <div>
+          <div class="barcode-product-name" id="barcode-product-name"></div>
+          <div class="telemetry cap t3" id="barcode-product-brand"></div>
+        </div>
+      </div>
+      <div class="barcode-macros" id="barcode-product-macros"></div>
+      <div class="form-grid" style="margin-top:14px;">
+        <div>
+          <label class="hud-label field-lbl" for="barcode-amount">AMOUNT</label>
+          <input class="tac-input" id="barcode-amount" type="number" inputmode="decimal" min="1" step="1" value="100">
+        </div>
+        <div>
+          <label class="hud-label field-lbl" for="barcode-unit">UNIT</label>
+          <select class="tac-input" id="barcode-unit">
+            <option value="g">grams</option>
+            <option value="serving">serving</option>
+          </select>
+        </div>
+      </div>
+      <div class="telemetry cap t3" id="barcode-serving-note" style="margin-top:8px;"></div>
+      <button class="tac-btn primary" id="btn-barcode-add" type="button" style="width:100%;margin-top:14px;">Add to today's log</button>
+    </div>
+  </div>
+</div>
+
 <nav class="tabbar">
   <button data-view="view-command" class="active">CMD<span class="tab-badge"></span></button>
   <button data-view="view-ops">OPS</button>
@@ -864,6 +920,7 @@ try {
   <button data-view="view-proto">PROTO<span class="tab-badge"></span></button>
 </nav>
 
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="js/app.js"></script>
 <script src="js/intelligence.js"></script>
 </body>

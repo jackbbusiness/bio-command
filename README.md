@@ -27,3 +27,8 @@ Publish the repository root through GitHub Pages. The default manifest is config
 Garmin telemetry is encrypted with AES-256-GCM before it is committed. Supabase row-level security restricts cloud records to their authenticated owner. API credentials entered in the app remain browser-side, so use a restricted key and understand the security limitations of a static client application.
 
 See `SETUP.md` for the Garmin uplink instructions and `supabase-setup.sql` for optional cloud sync.
+
+
+## Fuel barcode scanner
+
+Fuel now includes a camera barcode scanner. It reads EAN, UPC and Code 128 barcodes with `html5-qrcode`, looks products up through Open Food Facts, lets the user choose grams or servings, then writes calories and macros into the existing daily fuel log. Camera access requires HTTPS, which GitHub Pages provides. A manual barcode field is included when camera access is unavailable.

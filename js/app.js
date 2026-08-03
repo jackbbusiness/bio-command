@@ -2377,6 +2377,236 @@ document.getElementById("fuel-log-input").addEventListener("keydown", (ev) => {
   if (ev.key === "Enter") { ev.preventDefault(); const v = ev.target.value.trim(); if (v) aiLogMeal(v); }
 });
 
+
+/* ---------- Barcode scanner + Open Food Facts ---------- */
+let barcodeScanner = null;
+let barcodeProduct = null;
+let barcodeLocked = false;
+
+function barcodeSetStatus(message, color) {
+  const el = document.getElementById("barcode-status");
+  if (!el) return;
+  el.textContent = message;
+  el.style.color = color || COLORS.dim;
+}
+
+function numOrZero(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function productNutrient(product, key) {
+  const n = product && product.nutriments ? product.nutriments : {};
+  return numOrZero(n[key + "_100g"] != null ? n[key + "_100g"] : n[key]);
+}
+
+function normalizeBarcodeProduct(code, product) {
+  const servingQuantity = numOrZero(product.serving_quantity) || null;
+  return {
+    barcode: code,
+    name: product.product_name || product.product_name_en || "Unknown product",
+    brand: product.brands || "",
+    image: product.image_front_small_url || product.image_front_url || "",
+    servingQuantity,
+    servingLabel: product.serving_size || (servingQuantity ? servingQuantity + " g" : ""),
+    per100: {
+      kcal: productNutrient(product, "energy-kcal"),
+      proteinG: productNutrient(product, "proteins"),
+      carbG: productNutrient(product, "carbohydrates"),
+      fatG: productNutrient(product, "fat")
+    }
+  };
+}
+
+function barcodeCalculatedMacros() {
+  if (!barcodeProduct) return null;
+  const amountInput = document.getElementById("barcode-amount");
+  const unit = document.getElementById("barcode-unit").value;
+  const amount = Math.max(0, numOrZero(amountInput.value));
+  const grams = unit === "serving"
+    ? amount * (barcodeProduct.servingQuantity || 100)
+    : amount;
+  const factor = grams / 100;
+  return {
+    grams,
+    kcal: Math.round(barcodeProduct.per100.kcal * factor),
+    proteinG: Math.round(barcodeProduct.per100.proteinG * factor * 10) / 10,
+    carbG: Math.round(barcodeProduct.per100.carbG * factor * 10) / 10,
+    fatG: Math.round(barcodeProduct.per100.fatG * factor * 10) / 10
+  };
+}
+
+function renderBarcodeMacros() {
+  const host = document.getElementById("barcode-product-macros");
+  const m = barcodeCalculatedMacros();
+  if (!host || !m) return;
+  host.innerHTML = [
+    [m.kcal, "KCAL"], [m.proteinG + "g", "PROTEIN"],
+    [m.carbG + "g", "CARB"], [m.fatG + "g", "FAT"]
+  ].map(x => '<div class="barcode-macro"><strong>' + x[0] + '</strong><span>' + x[1] + '</span></div>').join("");
+}
+
+function showBarcodeProduct(product) {
+  barcodeProduct = product;
+  const result = document.getElementById("barcode-result");
+  result.hidden = false;
+  document.getElementById("barcode-product-name").textContent = product.name;
+  document.getElementById("barcode-product-brand").textContent = [product.brand, product.barcode].filter(Boolean).join(" · ");
+  const img = document.getElementById("barcode-product-image");
+  if (product.image) {
+    img.src = product.image;
+    img.alt = product.name;
+    img.hidden = false;
+  } else {
+    img.removeAttribute("src");
+    img.hidden = true;
+  }
+  const unit = document.getElementById("barcode-unit");
+  const servingOption = unit.querySelector('option[value="serving"]');
+  servingOption.disabled = !product.servingQuantity;
+  unit.value = product.servingQuantity ? "serving" : "g";
+  document.getElementById("barcode-amount").value = product.servingQuantity ? "1" : "100";
+  document.getElementById("barcode-serving-note").textContent = product.servingQuantity
+    ? "Serving: " + (product.servingLabel || product.servingQuantity + " g") + ". Nutrition is calculated from values per 100 g."
+    : "No serving size supplied. Enter the amount consumed in grams.";
+  renderBarcodeMacros();
+  result.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+async function lookupBarcode(code) {
+  code = String(code || "").replace(/\D/g, "");
+  if (code.length < 8 || code.length > 14) {
+    barcodeSetStatus("Enter a valid 8 to 14 digit barcode.", COLORS.red);
+    return;
+  }
+  if (barcodeLocked) return;
+  barcodeLocked = true;
+  barcodeSetStatus("Looking up " + code + "...", COLORS.cyan);
+  try {
+    const fields = ["code","product_name","product_name_en","brands","serving_size","serving_quantity","image_front_small_url","image_front_url","nutriments"].join(",");
+    const url = "https://world.openfoodfacts.org/api/v2/product/" + encodeURIComponent(code) + ".json?fields=" + encodeURIComponent(fields);
+    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    if (data.status !== 1 || !data.product) throw new Error("Product not found");
+    const product = normalizeBarcodeProduct(code, data.product);
+    if (!product.per100.kcal && !product.per100.proteinG && !product.per100.carbG && !product.per100.fatG) {
+      throw new Error("Product found, but nutrition data is missing");
+    }
+    showBarcodeProduct(product);
+    barcodeSetStatus("Product found. Check the amount, then add it.", COLORS.green);
+    await stopBarcodeCamera();
+  } catch (e) {
+    barcodeSetStatus(e.message + ". You can enter another barcode or use Quick Log.", COLORS.red);
+  } finally {
+    barcodeLocked = false;
+  }
+}
+
+async function stopBarcodeCamera() {
+  if (!barcodeScanner) return;
+  try {
+    if (barcodeScanner.isScanning) await barcodeScanner.stop();
+    await barcodeScanner.clear();
+  } catch (e) {}
+  barcodeScanner = null;
+}
+
+async function startBarcodeCamera() {
+  const reader = document.getElementById("barcode-reader");
+  reader.innerHTML = "";
+  if (typeof Html5Qrcode === "undefined") {
+    barcodeSetStatus("Scanner library could not load. Enter the barcode manually.", COLORS.amber);
+    return;
+  }
+  barcodeSetStatus("Requesting camera access...", COLORS.cyan);
+  barcodeScanner = new Html5Qrcode("barcode-reader", { formatsToSupport: [
+    Html5QrcodeSupportedFormats.EAN_13,
+    Html5QrcodeSupportedFormats.EAN_8,
+    Html5QrcodeSupportedFormats.UPC_A,
+    Html5QrcodeSupportedFormats.UPC_E,
+    Html5QrcodeSupportedFormats.CODE_128
+  ]});
+  const config = {
+    fps: 12,
+    qrbox: function(viewWidth, viewHeight) {
+      return { width: Math.min(320, Math.floor(viewWidth * 0.86)), height: Math.min(130, Math.floor(viewHeight * 0.42)) };
+    },
+    aspectRatio: 1.777,
+    disableFlip: false
+  };
+  try {
+    await barcodeScanner.start(
+      { facingMode: "environment" },
+      config,
+      function(decodedText) {
+        if (!barcodeLocked) {
+          document.getElementById("barcode-manual").value = decodedText;
+          if (navigator.vibrate) navigator.vibrate(80);
+          lookupBarcode(decodedText);
+        }
+      },
+      function() {}
+    );
+    barcodeSetStatus("Scanning. Hold the barcode steady inside the frame.", COLORS.dim);
+  } catch (e) {
+    barcodeSetStatus("Camera unavailable: " + e + ". Enter the barcode manually.", COLORS.amber);
+  }
+}
+
+async function openBarcodeScanner() {
+  barcodeProduct = null;
+  barcodeLocked = false;
+  document.getElementById("barcode-result").hidden = true;
+  document.getElementById("barcode-manual").value = "";
+  const overlay = document.getElementById("barcode-overlay");
+  overlay.classList.add("open");
+  overlay.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+  await startBarcodeCamera();
+}
+
+async function closeBarcodeScanner() {
+  await stopBarcodeCamera();
+  const overlay = document.getElementById("barcode-overlay");
+  overlay.classList.remove("open");
+  overlay.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+}
+
+document.getElementById("btn-barcode-scan").addEventListener("click", openBarcodeScanner);
+document.getElementById("btn-barcode-close").addEventListener("click", closeBarcodeScanner);
+document.getElementById("btn-barcode-lookup").addEventListener("click", function() {
+  lookupBarcode(document.getElementById("barcode-manual").value);
+});
+document.getElementById("barcode-manual").addEventListener("keydown", function(ev) {
+  if (ev.key === "Enter") { ev.preventDefault(); lookupBarcode(ev.target.value); }
+});
+document.getElementById("barcode-amount").addEventListener("input", renderBarcodeMacros);
+document.getElementById("barcode-unit").addEventListener("change", renderBarcodeMacros);
+document.getElementById("btn-barcode-add").addEventListener("click", async function() {
+  const macros = barcodeCalculatedMacros();
+  if (!barcodeProduct || !macros || macros.grams <= 0) return;
+  DB.fuelLog = DB.fuelLog || [];
+  DB.fuelLog.push({
+    dayKey: dayKey(),
+    name: barcodeProduct.name,
+    kcal: macros.kcal,
+    proteinG: macros.proteinG,
+    carbG: macros.carbG,
+    fatG: macros.fatG,
+    source: "barcode",
+    barcode: barcodeProduct.barcode,
+    amountG: Math.round(macros.grams)
+  });
+  saveDB(DB);
+  renderFuelTab();
+  const status = document.getElementById("fuel-log-status");
+  status.textContent = barcodeProduct.name + " logged: " + macros.kcal + " kcal / " + macros.proteinG + "g protein";
+  status.style.color = COLORS.green;
+  await closeBarcodeScanner();
+});
+
 /* ---------- Goal chips + plan auto-calculator ---------- */
 let currentGoal = "fat_loss";
 document.getElementById("goal-chips").addEventListener("click", (ev) => {

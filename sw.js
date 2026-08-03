@@ -12,7 +12,7 @@
        Edge Function cron once that step is configured.
    ============================================================ */
 
-const CACHE_VERSION = "bc-v2";
+const CACHE_VERSION = "bc-v2.1-barcode";
 const APP_ROOT = self.registration.scope;
 const SHELL_URLS = [APP_ROOT, APP_ROOT + "index.html", APP_ROOT + "manifest.json", APP_ROOT + "css/app.css", APP_ROOT + "css/intelligence.css", APP_ROOT + "js/app.js", APP_ROOT + "js/intelligence.js"];
 
