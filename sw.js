@@ -12,18 +12,19 @@
        Edge Function cron once that step is configured.
    ============================================================ */
 
-const CACHE_VERSION = "bc-v2.2.1-history-audited";
+const CACHE_VERSION = "bc-v2.2.2-storage-extracted";
 const APP_ROOT = self.registration.scope;
 const SHELL_URLS = [
   APP_ROOT,
   APP_ROOT + "index.html",
   APP_ROOT + "manifest.json",
-  APP_ROOT + "css/app.css?v=2.2.1",
-  APP_ROOT + "css/intelligence.css?v=2.2.1",
-  APP_ROOT + "css/history.css?v=2.2.1",
-  APP_ROOT + "js/app.js?v=2.2.1",
-  APP_ROOT + "js/intelligence.js?v=2.2.1",
-  APP_ROOT + "js/history.js?v=2.2.1"
+  APP_ROOT + "css/app.css?v=2.2.2",
+  APP_ROOT + "css/intelligence.css?v=2.2.2",
+  APP_ROOT + "css/history.css?v=2.2.2",
+  APP_ROOT + "js/modules/storage.js?v=2.2.2",
+  APP_ROOT + "js/app.js?v=2.2.2",
+  APP_ROOT + "js/intelligence.js?v=2.2.2",
+  APP_ROOT + "js/history.js?v=2.2.2"
 ];
 
 /* ---------- Install ---------- */
