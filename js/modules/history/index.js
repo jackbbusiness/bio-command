@@ -7,9 +7,11 @@
  * - fmtMin
  * - bandColor
  * - showView
+ * - escapeHtml — from js/modules/shared/sanitize.js; the one shared
+ *   HTML-escaping helper, used here instead of a local copy.
  */
 (function (global) {
-  function createHistoryModule({ dayKey, fmtMin, bandColor, DB, showView }) {
+  function createHistoryModule({ dayKey, fmtMin, bandColor, DB, showView, escapeHtml }) {
     let selectedKey = dayKey();
     let rangeDays = 7;
 
@@ -27,12 +29,7 @@
       weekday: "long", day: "numeric", month: "long", year: "numeric"
     });
     const shortDate = (key) => parseKey(key).toLocaleDateString(undefined, { day: "numeric", month: "short" });
-    const esc = (value) => String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+    const esc = escapeHtml;
     const avg = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null);
     const sum = (arr) => arr.reduce((a, b) => a + b, 0);
 

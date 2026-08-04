@@ -32,6 +32,7 @@ const { fmtMin, clamp01, meanOf } = window.BioCommandShared.formatting;
 const { armDangerButton } = window.BioCommandShared.dom;
 const { genId } = window.BioCommandShared.ids;
 const { hexToRgba, readColors } = window.BioCommandShared.colors;
+const { escapeHtml } = window.BioCommandShared.sanitize;
 
 let COLORS = readColors();
 
@@ -196,6 +197,7 @@ const trainingModule = window.BioCommandTraining.createTrainingModule({
   armDangerButton,
   computeScores,
   renderCommand,
+  escapeHtml,
   getDB: () => DB,
   getColors: () => COLORS
 });
@@ -212,6 +214,7 @@ const fuelModule = window.BioCommandFuel.createFuelModule({
   baselineFor,
   loadAI: settingsModule.loadAI,
   armDangerButton,
+  escapeHtml,
   getDB: () => DB,
   getColors: () => COLORS
 });
@@ -232,6 +235,7 @@ const journalModule = window.BioCommandJournal.createJournalModule({
   dayKey,
   saveDB,
   meanOf,
+  escapeHtml,
   getDB: () => DB,
   getColors: () => COLORS
 });
@@ -260,6 +264,7 @@ const biomarkersModule = window.BioCommandBiomarkers.createBiomarkersModule({
   loadAI: settingsModule.loadAI,
   hexToRgba,
   bigLine,
+  escapeHtml,
   getDB: () => DB,
   getColors: () => COLORS
 });
@@ -285,6 +290,7 @@ const protocolsModule = window.BioCommandProtocols.createProtocolsModule({
   armDangerButton,
   meanOf,
   weekdayBit,
+  escapeHtml,
   getDB: () => DB,
   getColors: () => COLORS
 });

@@ -12,7 +12,8 @@
         fmtMin,
         bandColor,
         DB,
-        showView
+        showView,
+        escapeHtml: window.BioCommandShared.sanitize.escapeHtml
       })
     : null;
 

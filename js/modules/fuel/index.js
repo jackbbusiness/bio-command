@@ -12,9 +12,13 @@
  *   DB and COLORS are both reassigned at runtime (import/reset/cloud
  *   sync for DB, theme toggle for COLORS) and the module must always
  *   read the current value rather than one captured at construction.
+ * - escapeHtml() — js/modules/shared/sanitize.js; run over meal/
+ *   template names and AI-generated text before interpolating them
+ *   into a rendered HTML string (meal names can come from a barcode
+ *   lookup or the AI quick-log response, not just typed input).
  */
 (function (global) {
-  function createFuelModule({ dayKey, saveDB, genId, baselineFor, loadAI, armDangerButton, getDB, getColors }) {
+  function createFuelModule({ dayKey, saveDB, genId, baselineFor, loadAI, armDangerButton, escapeHtml, getDB, getColors }) {
     const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
 
     /* Evidence-based macro formulas per goal (research: 2.2g/kg protein for fat loss,
@@ -162,7 +166,7 @@
       logHost.innerHTML = todayMeals.length
         ? todayMeals.map((m, i) =>
             '<div class="logged-meal-row">' +
-            '<span class="lm-name">' + m.name + '</span>' +
+            '<span class="lm-name">' + escapeHtml(m.name) + '</span>' +
             '<span class="lm-macro">' + m.kcal + ' kcal &middot; ' + m.proteinG + 'p ' + m.carbG + 'c ' + m.fatG + 'f</span>' +
             '<button class="lm-del" data-logdel="' + i + '">&times;</button>' +
             '</div>')
@@ -443,7 +447,7 @@
         saveDB(DB);
         renderMealPlanOut(text, goalLabel);
       } catch (e) {
-        status.innerHTML = '<div class="empty-hint">Error: ' + e.message + '</div>';
+        status.innerHTML = '<div class="empty-hint">Error: ' + escapeHtml(e.message) + '</div>';
       }
     }
 
@@ -451,17 +455,17 @@
       const host = document.getElementById("meal-plan-out");
       if (!text) { host.innerHTML = ""; return; }
       const days = text.split(/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i).filter(Boolean);
-      let html = '<div class="telemetry cap t3" style="margin-bottom:10px;">' + (goal || "") + ' PLAN</div>';
+      let html = '<div class="telemetry cap t3" style="margin-bottom:10px;">' + escapeHtml(goal || "") + ' PLAN</div>';
       for (let i = 0; i < days.length; i += 2) {
         const dayName = days[i];
         const content = days[i + 1] || "";
-        html += '<div class="meal-plan-day"><div class="meal-plan-day-head">' + dayName + '</div>';
+        html += '<div class="meal-plan-day"><div class="meal-plan-day-head">' + escapeHtml(dayName) + '</div>';
         content.trim().split(/\n+/).filter(Boolean).forEach(line => {
-          html += '<div class="meal-plan-item">' + line.trim() + '</div>';
+          html += '<div class="meal-plan-item">' + escapeHtml(line.trim()) + '</div>';
         });
         html += '</div>';
       }
-      host.innerHTML = html || '<div>' + text.split("\n").map(l => '<div class="meal-plan-item">' + l + '</div>').join("") + '</div>';
+      host.innerHTML = html || '<div>' + text.split("\n").map(l => '<div class="meal-plan-item">' + escapeHtml(l) + '</div>').join("") + '</div>';
     }
 
     // Restore any saved plan on tab open
@@ -480,8 +484,8 @@
         return;
       }
       host.innerHTML = DB.mealTemplates.map(t =>
-        '<div class="template-row" data-editmeal="' + t.id + '">' +
-        '<span class="tmpl-name">' + t.name + '</span>' +
+        '<div class="template-row" data-editmeal="' + escapeHtml(t.id) + '">' +
+        '<span class="tmpl-name">' + escapeHtml(t.name) + '</span>' +
         '<span class="tmpl-macro">' + t.kcal + 'kcal &middot; ' + t.proteinG + 'p ' + t.carbG + 'c ' + t.fatG + 'f</span>' +
         '</div>'
       ).join("");

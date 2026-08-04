@@ -13,9 +13,12 @@
  * - getDB() / getColors() — accessors rather than plain values, since
  *   DB and COLORS are both reassigned at runtime (import/reset/cloud
  *   sync for DB, theme toggle for COLORS).
+ * - escapeHtml() — js/modules/shared/sanitize.js; run over workout/
+ *   exercise names before they're interpolated into a rendered HTML
+ *   string (they can come from import, not just the builder form).
  */
 (function (global) {
-  function createTrainingModule({ dayKey, saveDB, genId, armDangerButton, computeScores, renderCommand, getDB, getColors }) {
+  function createTrainingModule({ dayKey, saveDB, genId, armDangerButton, computeScores, renderCommand, escapeHtml, getDB, getColors }) {
     let builderExercises = [];
     let builderEditId = null;
     let exec = null; // { workout, startedAt, exSets: {exId: [{loadKg,reps,rpe,completed,completedAt}]}, restHandle, elapsedHandle }
@@ -75,16 +78,16 @@
       }
       host.innerHTML = active.map(w => {
         const exLines = w.exercises.map(e =>
-          e.name + " &middot; " + e.targetSets + "x" + e.repLow + "-" + e.repHigh
+          escapeHtml(e.name) + " &middot; " + e.targetSets + "x" + e.repLow + "-" + e.repHigh
         ).join("<br>");
         return '<div class="hud-card workout-card">' +
-          '<div class="wk-head"><span class="wk-name">' + w.name + '</span>' +
-          '<span class="spacer"></span><span class="wk-focus">' + (w.focus || "") + '</span></div>' +
+          '<div class="wk-head"><span class="wk-name">' + escapeHtml(w.name) + '</span>' +
+          '<span class="spacer"></span><span class="wk-focus">' + escapeHtml(w.focus || "") + '</span></div>' +
           '<div class="wk-exlist">' + exLines + '</div>' +
           '<div class="telemetry cap t3">' + lastPerformedLabel(w.id) + '</div>' +
           '<div class="wk-actions">' +
-          '<button class="tac-btn primary" data-start="' + w.id + '" style="flex:2;">Start</button>' +
-          '<button class="tac-btn" data-edit="' + w.id + '" style="flex:1;">Edit</button>' +
+          '<button class="tac-btn primary" data-start="' + escapeHtml(w.id) + '" style="flex:2;">Start</button>' +
+          '<button class="tac-btn" data-edit="' + escapeHtml(w.id) + '" style="flex:1;">Edit</button>' +
           '</div></div>';
       }).join("");
     }
@@ -105,7 +108,7 @@
         const setCount = sess.sets.length;
         return '<div class="session-row">' +
           '<span class="sr-date">' + dstr + '</span>' +
-          '<span class="sr-name">' + sess.workoutName + '</span>' +
+          '<span class="sr-name">' + escapeHtml(sess.workoutName) + '</span>' +
           '<span class="sr-meta">' + setCount + ' sets &middot; ' +
           (sess.durationMin != null ? sess.durationMin + " min" : "--") +
           (sess.sessionRPE != null ? " &middot; RPE " + sess.sessionRPE : "") + '</span>' +
@@ -121,7 +124,7 @@
         '<div class="ex-row" data-idx="' + i + '">' +
         '<button class="ex-remove" data-remove="' + i + '">&times;</button>' +
         '<input class="tac-input" data-field="name" data-idx="' + i + '" placeholder="Exercise name" value="' +
-          (e.name || "").replace(/"/g, "&quot;") + '">' +
+          escapeHtml(e.name || "") + '">' +
         '<div class="ex-row-grid">' +
         '<div><label class="ex-field-lbl">Sets</label><input class="tac-input" type="number" min="1" step="1" data-field="targetSets" data-idx="' + i + '" value="' + (e.targetSets ?? "") + '"></div>' +
         '<div><label class="ex-field-lbl">Rep low</label><input class="tac-input" type="number" min="1" step="1" data-field="repLow" data-idx="' + i + '" value="' + (e.repLow ?? "") + '"></div>' +
@@ -229,7 +232,7 @@
         }).join("");
         return '<div class="exec-ex-card">' +
           '<div class="exec-ex-head">' +
-          '<span class="exec-ex-title">' + e.name + '</span>' +
+          '<span class="exec-ex-title">' + escapeHtml(e.name) + '</span>' +
           '<span class="exec-ex-sub">' + e.targetSets + "x" + e.repLow + "-" + e.repHigh +
           (e.targetRPE ? " @ RPE " + e.targetRPE : "") + " &middot; rest " + e.restSec + "s</span>" +
           '</div>' +
@@ -332,7 +335,7 @@
         if (prior <= 0) return;
         const best = byExercise[name].reduce((a, b) => epley1RM(b.loadKg, b.reps) > epley1RM(a.loadKg, a.reps) ? b : a);
         if (epley1RM(best.loadKg, best.reps) > prior) {
-          prLines.push(name + ": " + best.loadKg + "kg x " + best.reps + " (est 1RM " + Math.round(epley1RM(best.loadKg, best.reps)) + "kg)");
+          prLines.push(escapeHtml(name) + ": " + best.loadKg + "kg x " + best.reps + " (est 1RM " + Math.round(epley1RM(best.loadKg, best.reps)) + "kg)");
         }
       });
 

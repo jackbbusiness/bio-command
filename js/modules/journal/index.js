@@ -13,9 +13,15 @@
  * Renders into two distinct places in the shell: a compact widget on
  * Command (render) and a full history/insights view on PROTO
  * (renderProto). Both are exposed since the app calls them separately.
+ *
+ * escapeHtml (js/modules/shared/sanitize.js) is used for entry.note
+ * wherever it's interpolated into a list-rendering HTML string; the
+ * note *editor* itself is built via DOM nodes instead (see
+ * buildJournalUI below) since that removes the injection vector
+ * entirely rather than just neutralizing it.
  */
 (function (global) {
-  function createJournalModule({ dayKey, saveDB, meanOf, getDB, getColors }) {
+  function createJournalModule({ dayKey, saveDB, meanOf, escapeHtml, getDB, getColors }) {
     const JOURNAL_QUESTIONS = [
       { key: "ALCOHOL",       label: "Alcohol last night?" },
       { key: "STRESS",        label: "Stress elevated?" },
@@ -78,10 +84,14 @@
       if (!compact) {
         const noteRow = document.createElement("div");
         noteRow.style.marginTop = "10px";
-        noteRow.innerHTML = '<textarea class="journal-note" id="journal-note-' + day + '" placeholder="Notes, how you feel, anything notable today...">' +
-          (entry.note || "") + '</textarea>';
+        const textarea = document.createElement("textarea");
+        textarea.className = "journal-note";
+        textarea.id = "journal-note-" + day;
+        textarea.placeholder = "Notes, how you feel, anything notable today...";
+        textarea.value = entry.note || "";
+        noteRow.appendChild(textarea);
         container.appendChild(noteRow);
-        container.querySelector(".journal-note").addEventListener("input", (ev) => {
+        textarea.addEventListener("input", (ev) => {
           setJournalNote(day, ev.target.value);
         });
       }
@@ -166,7 +176,7 @@
         const flags = JOURNAL_QUESTIONS.filter(q => entry.answers[q.key] === true).map(q => q.label.split(" ").slice(-1)[0].replace("?","")).join(", ");
         return '<div class="insight-row">' + dstr +
           (flags ? ' <span class="telemetry cap" style="color:var(--amber)">' + flags + '</span>' : ' <span class="telemetry cap t3">No flags</span>') +
-          (entry.note ? '<br><span class="telemetry cap t3">' + entry.note.slice(0, 80) + (entry.note.length > 80 ? "…" : "") + "</span>" : "") +
+          (entry.note ? '<br><span class="telemetry cap t3">' + escapeHtml(entry.note.slice(0, 80)) + (entry.note.length > 80 ? "…" : "") + "</span>" : "") +
           "</div>";
       }).filter(Boolean).join("") || '<div class="empty-hint">No journal entries yet this week.</div>';
     }

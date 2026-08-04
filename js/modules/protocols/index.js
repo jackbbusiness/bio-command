@@ -14,9 +14,13 @@
  * - getDB() / getColors() — accessors rather than plain values, since
  *   DB and COLORS are both reassigned at runtime (import/reset/cloud
  *   sync for DB, theme toggle for COLORS).
+ * - escapeHtml() — js/modules/shared/sanitize.js; run over directive
+ *   name/targetUnit and the id used in data-* attributes before
+ *   they're interpolated into a rendered HTML string (directives can
+ *   come from import, not just the builder form).
  */
 (function (global) {
-  function createProtocolsModule({ dayKey, saveDB, genId, armDangerButton, meanOf, weekdayBit, getDB, getColors }) {
+  function createProtocolsModule({ dayKey, saveDB, genId, armDangerButton, meanOf, weekdayBit, escapeHtml, getDB, getColors }) {
     const CATEGORY_LABELS = {
       coldExposure: "Cold exposure", heat: "Heat", supplement: "Supplement",
       sleepHygiene: "Sleep hygiene", mobility: "Mobility", zone2: "Zone 2",
@@ -100,12 +104,12 @@
           const cls = corr.delta > 0 ? "corr-pos" : corr.delta < 0 ? "corr-neg" : "";
           corrText = ' &middot; <span class="' + cls + '">Recovery ' + (corr.delta >= 0 ? "+" : "") + corr.delta + "pt on done days (n=" + corr.n + ")</span>";
         }
-        return '<div class="hud-card proto-row" data-editproto="' + p.id + '">' +
-          '<button class="sc-check' + (done ? " done" : "") + '" data-checkproto="' + p.id + '">' + (done ? "&#10003;" : "") + '</button>' +
+        return '<div class="hud-card proto-row" data-editproto="' + escapeHtml(p.id) + '">' +
+          '<button class="sc-check' + (done ? " done" : "") + '" data-checkproto="' + escapeHtml(p.id) + '">' + (done ? "&#10003;" : "") + '</button>' +
           '<div style="flex:1;">' +
-          '<div class="proto-name">' + p.name + '</div>' +
-          '<div class="proto-meta">' + CATEGORY_LABELS[p.category] +
-          (p.targetValue ? " &middot; " + p.targetValue + (p.targetUnit || "") : "") +
+          '<div class="proto-name">' + escapeHtml(p.name) + '</div>' +
+          '<div class="proto-meta">' + escapeHtml(CATEGORY_LABELS[p.category]) +
+          (p.targetValue ? " &middot; " + p.targetValue + escapeHtml(p.targetUnit || "") : "") +
           " &middot; " + streak + "d streak" + corrText + '</div>' +
           '</div></div>';
       }).join("");

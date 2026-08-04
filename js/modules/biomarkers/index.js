@@ -14,9 +14,13 @@
  * - getDB() / getColors() — accessors rather than plain values, since
  *   DB and COLORS are both reassigned at runtime (import/reset/cloud
  *   sync for DB, theme toggle for COLORS).
+ * - escapeHtml() — js/modules/shared/sanitize.js; run over marker
+ *   name/category/unit/sourceNote and log labName before they're
+ *   interpolated into a rendered HTML string (marker definitions and
+ *   log entries can both come from import, not just manual entry).
  */
 (function (global) {
-  function createBiomarkersModule({ dayKey, saveDB, loadAI, hexToRgba, bigLine, getDB, getColors }) {
+  function createBiomarkersModule({ dayKey, saveDB, loadAI, hexToRgba, bigLine, escapeHtml, getDB, getColors }) {
     let markerOpenCode = null;
 
     function seedDefaultMarkers() {
@@ -63,10 +67,11 @@
     }
 
     function rangeCaption(marker) {
-      const fmt = (lo, hi) => (lo != null ? lo : "--") + " - " + (hi != null ? hi : "--") + " " + marker.unit;
+      const unit = escapeHtml(marker.unit);
+      const fmt = (lo, hi) => (lo != null ? lo : "--") + " - " + (hi != null ? hi : "--") + " " + unit;
       return "CLINICAL: " + fmt(marker.clinicalLow, marker.clinicalHigh) +
         "<br>OPTIMAL: " + fmt(marker.optimalLow, marker.optimalHigh) +
-        "<br><span class=\"t3\">" + marker.sourceNote + "</span>";
+        "<br><span class=\"t3\">" + escapeHtml(marker.sourceNote) + "</span>";
     }
 
     /* ---------- Bio AI import ---------- */
@@ -139,14 +144,14 @@
         const ageLabel = latest
           ? Math.floor((Date.now() - new Date(latest.date).getTime()) / 86400000) + "d ago"
           : "Not logged";
-        return '<div class="marker-card clickable" data-marker="' + m.code + '">' +
+        return '<div class="marker-card clickable" data-marker="' + escapeHtml(m.code) + '">' +
           '<div class="marker-info">' +
-          '<div class="marker-name">' + m.name + '</div>' +
-          '<div class="marker-cat">' + m.category + '</div>' +
+          '<div class="marker-name">' + escapeHtml(m.name) + '</div>' +
+          '<div class="marker-cat">' + escapeHtml(m.category) + '</div>' +
           '</div>' +
           '<div class="marker-value-col">' +
           '<span class="marker-value" style="color:' + band.color + '">' + (latest ? latest.value : "--") + '</span> ' +
-          '<span class="marker-unit">' + m.unit + '</span>' +
+          '<span class="marker-unit">' + escapeHtml(m.unit) + '</span>' +
           '<div class="marker-age">' + ageLabel + '</div>' +
           '</div></div>';
       }).join("");
@@ -191,8 +196,8 @@
 
       document.getElementById("marker-history").innerHTML = logs.length
         ? logs.slice().reverse().map(l =>
-            '<div class="log-history-row"><span>' + l.date + '</span><span>' + l.value + " " + m.unit +
-            (l.labName ? " &middot; " + l.labName : "") + '</span></div>'
+            '<div class="log-history-row"><span>' + escapeHtml(l.date) + '</span><span>' + l.value + " " + escapeHtml(m.unit) +
+            (l.labName ? " &middot; " + escapeHtml(l.labName) : "") + '</span></div>'
           ).join("")
         : '<div class="empty-hint">No results logged yet.</div>';
 

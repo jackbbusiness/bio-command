@@ -29,6 +29,7 @@ const SHELL_URLS = [
   APP_ROOT + "js/modules/shared/colors.js?v=2.2.2",
   APP_ROOT + "js/modules/shared/charts.js?v=2.2.2",
   APP_ROOT + "js/modules/shared/scoring.js?v=2.2.2",
+  APP_ROOT + "js/modules/shared/sanitize.js?v=2.2.2",
   APP_ROOT + "js/modules/history/index.js?v=2.2.2",
   APP_ROOT + "js/modules/fuel/index.js?v=2.2.2",
   APP_ROOT + "js/modules/training/index.js?v=2.2.2",
