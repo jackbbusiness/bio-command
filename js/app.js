@@ -454,6 +454,6 @@ syncModule.initSupabase();
 initServiceWorker();
 renderTabBadges();
 settingsModule.applyTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
-if (syncModule.loadSyncConfig() && (syncModule.loadSyncConfig() || {}).pass) {
+if (syncModule.loadSyncConfig() && syncModule.hasPassphrase()) {
   syncModule.syncNow();
 }

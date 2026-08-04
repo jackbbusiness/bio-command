@@ -16,6 +16,10 @@
  * Exposes getSB/getCurrentUser beyond init/render because the
  * Notifications code (not yet extracted) registers push
  * subscriptions against the same Supabase client and signed-in user.
+ * Also exposes hasPassphrase() so app.js's boot sequence can decide
+ * whether to auto-run syncNow() without reading the passphrase
+ * itself (see the Garmin Uplink section below for why the
+ * passphrase lives in sessionStorage, not the persisted config).
  *
  * Note: _originalSaveDB/_saveThenSync below are moved verbatim from
  * the original code — they look like an abandoned attempt to wrap
@@ -29,6 +33,7 @@
 (function (global) {
   function createSyncModule({ Storage, DB_KEY, dayKey, computeScores, saveDB, renderCommand, renderJournal, renderDataCard, getDB, setDB, getColors }) {
     const SYNC_KEY = "biocommand.sync";
+    const SYNC_PASS_KEY = "biocommand.sync.pass";
     const SB_CONFIG_KEY = "biocommand.supabase";
     const CLOUD_SYNC_KEY = "biocommand.cloudsync";
 
@@ -36,13 +41,48 @@
     let _currentUser = null;
     let _syncTimer = null;
 
-    /* ---------- Garmin Uplink (silent auto-sync; header dot reports state) ---------- */
+    /* ---------- Garmin Uplink (silent auto-sync; header dot reports state) ----------
+       The passphrase is deliberately NOT part of the persisted config:
+       it's the sole protection for telemetry that lives forever in a
+       public git repo (see garmin_sync.py), so storing it in
+       localStorage would mean any future XSS -- on this origin, ever
+       -- could read it and decrypt the entire historical feed, not
+       just current data. It's kept in sessionStorage instead: still
+       readable by JS on this page (no client-side storage is safe
+       against an active XSS), but scoped to the current tab and gone
+       when it closes, rather than living on disk indefinitely. The
+       tradeoff: the passphrase must be re-entered once per browser
+       session for auto-sync to run; url/lastSync (non-secret) are
+       unaffected and still persist normally. */
 
     function loadSyncConfig() {
-      try { return JSON.parse(Storage.get(SYNC_KEY)) || null; }
-      catch (e) { return null; }
+      let cfg;
+      try { cfg = JSON.parse(Storage.get(SYNC_KEY)) || null; }
+      catch (e) { cfg = null; }
+      if (cfg && cfg.pass !== undefined) {
+        // One-time migration: strip and discard any passphrase persisted
+        // by a previous version of this app rather than carrying it
+        // forward on disk.
+        delete cfg.pass;
+        Storage.set(SYNC_KEY, JSON.stringify(cfg));
+      }
+      return cfg;
     }
-    function saveSyncConfig(cfg) { Storage.set(SYNC_KEY, JSON.stringify(cfg)); }
+    function saveSyncConfig(cfg) {
+      const toStore = { url: cfg.url, lastSync: cfg.lastSync };
+      Storage.set(SYNC_KEY, JSON.stringify(toStore));
+    }
+
+    function loadPassphrase() {
+      try { return window.sessionStorage.getItem(SYNC_PASS_KEY) || ""; }
+      catch (e) { return ""; }
+    }
+    function savePassphrase(pass) {
+      try {
+        if (pass) window.sessionStorage.setItem(SYNC_PASS_KEY, pass);
+        else window.sessionStorage.removeItem(SYNC_PASS_KEY);
+      } catch (e) { /* sessionStorage unavailable; passphrase just won't persist across renders */ }
+    }
 
     function setSyncDot(state) {
       document.getElementById("sync-dot").className = "sync-dot " + (state || "");
@@ -100,8 +140,9 @@
     async function syncNow() {
       const DB = getDB();
       const cfg = loadSyncConfig();
-      if (!cfg || !cfg.pass) {
-        setUplinkStatus("Uplink not configured. Set the passphrase and save.", "err");
+      const pass = loadPassphrase();
+      if (!cfg || !pass) {
+        setUplinkStatus("Uplink not configured. Enter the passphrase and save.", "err");
         return;
       }
       if (!window.crypto || !crypto.subtle) {
@@ -125,7 +166,7 @@
       }
       let payload;
       try {
-        payload = await decryptFeed(blob, cfg.pass);
+        payload = await decryptFeed(blob, pass);
       } catch (e) {
         setUplinkStatus("Decrypt failed. Check the passphrase.", "err");
         setSyncDot("err");
@@ -153,7 +194,7 @@
     function renderUplink() {
       const cfg = loadSyncConfig();
       document.getElementById("up-url").value = (cfg && cfg.url) || "";
-      document.getElementById("up-pass").value = (cfg && cfg.pass) || "";
+      document.getElementById("up-pass").value = loadPassphrase();
       const last = document.getElementById("uplink-last");
       last.textContent = cfg && cfg.lastSync
         ? "LAST " + cfg.lastSync.slice(5, 16).replace("T", " ")
@@ -339,10 +380,10 @@
       document.getElementById("btn-save-uplink").addEventListener("click", () => {
         const cfg = loadSyncConfig() || {};
         cfg.url = document.getElementById("up-url").value.trim();
-        cfg.pass = document.getElementById("up-pass").value;
         saveSyncConfig(cfg);
+        savePassphrase(document.getElementById("up-pass").value);
         renderUplink();
-        setUplinkStatus("Saved. Auto-sync runs each time the app opens.", "ok");
+        setUplinkStatus("Saved. The passphrase is kept for this browser session only, so auto-sync runs on reload here but will need re-entering next time you open the app.", "ok");
       });
 
       document.getElementById("btn-sync").addEventListener("click", syncNow);
@@ -415,6 +456,7 @@
       init, render,
       renderUplink, renderCloudCard,
       loadSyncConfig, syncNow, initSupabase,
+      hasPassphrase: () => !!loadPassphrase(),
       getSB, getCurrentUser: () => _currentUser,
       enqueueCloudSync
     };
