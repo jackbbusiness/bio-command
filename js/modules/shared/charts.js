@@ -13,6 +13,38 @@
 (function (global) {
   const SPARK_W = 132, SPARK_H = 38;
 
+  // Catmull-Rom-to-Bezier smoothing for a run of consecutive (no-gap)
+  // points, so lines read as smooth curves instead of straight
+  // segments. Gaps in the data (missing days) still break the path
+  // the same way the old "M vs L" logic did -- smoothing only ever
+  // runs within one unbroken run of real values.
+  function smoothRunPath(pts) {
+    if (pts.length === 1) return "M" + pts[0].x.toFixed(1) + " " + pts[0].y.toFixed(1) + " ";
+    let d = "M" + pts[0].x.toFixed(1) + " " + pts[0].y.toFixed(1) + " ";
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[i + 2] || p2;
+      const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+      const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+      d += "C" + c1x.toFixed(1) + " " + c1y.toFixed(1) + " " + c2x.toFixed(1) + " " +
+        c2y.toFixed(1) + " " + p2.x.toFixed(1) + " " + p2.y.toFixed(1) + " ";
+    }
+    return d;
+  }
+
+  function smoothPath(defined, x, y) {
+    const runs = [];
+    let run = [];
+    defined.forEach((p, idx) => {
+      if (idx > 0 && p.i !== defined[idx - 1].i + 1) { runs.push(run); run = []; }
+      run.push({ x: x(p.i), y: y(p.v) });
+    });
+    if (run.length) runs.push(run);
+    return runs.map(smoothRunPath).join("");
+  }
+
   function createChartHelpers({ getColors, hexToRgba, clamp01 }) {
     function sparkLine(values, color) {
       const n = values.length;
@@ -65,7 +97,7 @@
       return '<svg class="mc-spark" viewBox="0 0 132 38">' + rects + "</svg>";
     }
 
-    function bigLine(values, color) {
+    function bigLine(values, color, labels) {
       const n = values.length;
       const defined = values.map((v, i) => ({ v, i })).filter(p => p.v != null);
       if (!defined.length) return '<svg class="detail-chart" viewBox="0 0 320 100"></svg>';
@@ -76,27 +108,26 @@
       const x = i => 14 + i * (320 - 28) / Math.max(1, n - 1);
       const y = v => 90 - (v - lo) / (hi - lo) * 66;
 
-      let d = "", prevIdx = null;
-      defined.forEach(p => {
-        const cmd = (prevIdx != null && p.i === prevIdx + 1) ? "L" : "M";
-        d += cmd + x(p.i).toFixed(1) + " " + y(p.v).toFixed(1) + " ";
-        prevIdx = p.i;
-      });
+      const d = smoothPath(defined, x, y);
       const last = defined[defined.length - 1];
       const area = defined.length > 1
         ? '<path d="' + d + "L" + x(last.i).toFixed(1) + " 90 L" +
           x(defined[0].i).toFixed(1) + ' 90 Z" fill="' + hexToRgba(color, 0.1) + '" stroke="none"></path>'
         : "";
-      const dots = defined.map(p =>
-        '<circle cx="' + x(p.i).toFixed(1) + '" cy="' + y(p.v).toFixed(1) +
-        '" r="2.6" fill="' + color + '"></circle>').join("");
+      const dots = defined.map(p => {
+        const label = labels && labels[p.i] != null ? labels[p.i] : "";
+        return '<circle cx="' + x(p.i).toFixed(1) + '" cy="' + y(p.v).toFixed(1) +
+          '" r="2.6" fill="' + color + '"></circle>' +
+          '<circle class="chart-hit" cx="' + x(p.i).toFixed(1) + '" cy="' + y(p.v).toFixed(1) +
+          '" r="11" fill="transparent" data-val="' + p.v + '" data-label="' + label + '"></circle>';
+      }).join("");
       return '<svg class="detail-chart" viewBox="0 0 320 100">' + area +
         '<path d="' + d + '" fill="none" stroke="' + color +
         '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>' +
         dots + "</svg>";
     }
 
-    function bigBars(values, color, fixedMax, targetLine) {
+    function bigBars(values, color, fixedMax, targetLine, labels) {
       const COLORS = getColors();
       const n = values.length;
       const max = fixedMax || Math.max(...values.filter(v => v != null), 1);
@@ -104,14 +135,18 @@
       let rects = "";
       values.forEach((v, i) => {
         const cx = 8 + i * slot + slot / 2;
+        const label = labels && labels[i] != null ? labels[i] : "";
+        const hit = '<rect class="chart-hit" x="' + (cx - slot / 2).toFixed(1) + '" y="20" width="' +
+          slot.toFixed(1) + '" height="70" fill="transparent" data-val="' + (v == null ? "" : v) +
+          '" data-label="' + label + '"></rect>';
         if (v == null || v <= 0) {
           rects += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="87" width="' +
-            bw.toFixed(1) + '" height="3" rx="1.5" fill="' + hexToRgba(color, 0.18) + '"></rect>';
+            bw.toFixed(1) + '" height="3" rx="1.5" fill="' + hexToRgba(color, 0.18) + '"></rect>' + hit;
         } else {
           const h = Math.max(4, (v / max) * 70);
           rects += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + (90 - h).toFixed(1) +
             '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) +
-            '" rx="3" fill="' + color + '"></rect>';
+            '" rx="3" fill="' + color + '"></rect>' + hit;
         }
       });
       let line = "";
@@ -154,7 +189,56 @@
       return '<svg class="detail-chart" viewBox="0 0 320 100">' + rects + "</svg>";
     }
 
-    return { sparkLine, sparkBars, bigLine, bigBars, bigStacked };
+    // Wires tap/hover tooltips onto a chart SVG's invisible `.chart-hit`
+    // marks (added by bigLine/bigBars when a `labels` array is passed).
+    // A no-op if the chart wasn't built with labels -- no .chart-hit
+    // elements means nothing to attach to.
+    function wireChartTooltip(svgEl) {
+      if (!svgEl) return null;
+      const container = svgEl.parentElement;
+      if (!container) return null;
+      if (getComputedStyle(container).position === "static") {
+        container.style.position = "relative";
+      }
+      let tip = container.querySelector(".chart-tooltip");
+      if (!tip) {
+        tip = document.createElement("div");
+        tip.className = "chart-tooltip";
+        container.appendChild(tip);
+      }
+      function hide() { tip.classList.remove("show"); }
+      function show(hitEl) {
+        const val = hitEl.getAttribute("data-val");
+        if (val === "" || val == null) { hide(); return; }
+        const label = hitEl.getAttribute("data-label");
+        tip.textContent = (label ? label + ": " : "") + val;
+        let px, py;
+        if (hitEl.hasAttribute("cx")) {
+          px = parseFloat(hitEl.getAttribute("cx"));
+          py = parseFloat(hitEl.getAttribute("cy"));
+        } else {
+          px = parseFloat(hitEl.getAttribute("x")) + parseFloat(hitEl.getAttribute("width")) / 2;
+          py = parseFloat(hitEl.getAttribute("y"));
+        }
+        const svgRect = svgEl.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const vb = svgEl.viewBox.baseVal;
+        const scaleX = svgRect.width / vb.width, scaleY = svgRect.height / vb.height;
+        tip.style.left = ((svgRect.left - containerRect.left) + px * scaleX) + "px";
+        tip.style.top = ((svgRect.top - containerRect.top) + py * scaleY) + "px";
+        tip.classList.add("show");
+      }
+      svgEl.addEventListener("click", (e) => {
+        const hit = e.target.closest && e.target.closest(".chart-hit");
+        if (hit) show(hit); else hide();
+      });
+      document.addEventListener("click", (e) => {
+        if (!container.contains(e.target)) hide();
+      });
+      return { hide };
+    }
+
+    return { sparkLine, sparkBars, bigLine, bigBars, bigStacked, wireChartTooltip };
   }
 
   global.BioCommandShared = global.BioCommandShared || {};
