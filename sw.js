@@ -12,7 +12,7 @@
        Edge Function cron once that step is configured.
    ============================================================ */
 
-const CACHE_VERSION = "bc-v2.3.0-self-hosted-vendor";
+const CACHE_VERSION = "bc-v2.3.0-csp-hardening";
 const APP_ROOT = self.registration.scope;
 const SHELL_URLS = [
   APP_ROOT,
@@ -23,6 +23,7 @@ const SHELL_URLS = [
   APP_ROOT + "css/history.css?v=2.2.2",
   APP_ROOT + "js/vendor/supabase.min.js?v=2.112.0",
   APP_ROOT + "js/vendor/html5-qrcode.min.js?v=2.3.8",
+  APP_ROOT + "js/theme-boot.js?v=2.3.0",
   APP_ROOT + "js/modules/storage.js?v=2.2.2",
   APP_ROOT + "js/modules/shared/dates.js?v=2.2.2",
   APP_ROOT + "js/modules/shared/formatting.js?v=2.2.2",
