@@ -4,7 +4,7 @@
    STORAGE ADAPTER (extracted module)
    ============================================================ */
 
-const { Storage, DB_KEY, emptyDB, loadDB } = window.BioCommandStorage;
+const { Storage, DB_KEY, DB_CORRUPTED_BACKUP_KEY, emptyDB, loadDB } = window.BioCommandStorage;
 
 function saveDB(db) {
   window.BioCommandStorage.saveDB(db, {
@@ -12,11 +12,65 @@ function saveDB(db) {
       renderDataCard();
       enqueueCloudSync();
       window.dispatchEvent(new CustomEvent("biocommand:data-changed"));
-    }]
+    }],
+    onError: (info) => {
+      showStorageBanner(
+        info.type === "quota"
+          ? "Your device storage is full. This change was NOT saved. Free up space, then export a backup from SYS as soon as possible."
+          : "This change could not be saved due to a storage error. Your data may be at risk -- export a backup from SYS as soon as possible.",
+        "error"
+      );
+    }
   });
 }
 
-let DB = loadDB();
+const dbLoadResult = loadDB();
+let DB = dbLoadResult.db;
+
+/* ============================================================
+   STORAGE BANNER
+   A single sticky bar (hidden by default) used for the three cases
+   where data could be silently lost or already has been: a corrupted
+   DB found at boot, a save that failed to persist (quota/storage
+   error), and non-persistent storage (private browsing, storage
+   blocked, etc). Dismissing it hides it for the rest of this page
+   load; it is re-evaluated fresh on every boot, so a still-true
+   volatile-storage warning reappears next load.
+   ============================================================ */
+
+function showStorageBanner(message, tone, actionLabel, onAction) {
+  const banner = document.getElementById("storage-banner");
+  const msgEl = document.getElementById("storage-banner-msg");
+  const actionEl = document.getElementById("storage-banner-action");
+  msgEl.textContent = message;
+  banner.className = "storage-banner" + (tone === "error" ? " tone-error" : "");
+  if (actionLabel && onAction) {
+    actionEl.textContent = actionLabel;
+    actionEl.hidden = false;
+    actionEl.onclick = onAction;
+  } else {
+    actionEl.hidden = true;
+    actionEl.onclick = null;
+  }
+  banner.hidden = false;
+}
+
+function hideStorageBanner() {
+  document.getElementById("storage-banner").hidden = true;
+}
+
+document.getElementById("storage-banner-dismiss").addEventListener("click", hideStorageBanner);
+
+function downloadCorruptedBackup() {
+  const raw = Storage.get(DB_CORRUPTED_BACKUP_KEY);
+  if (!raw) return;
+  const blob = new Blob([raw], { type: "application/octet-stream" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "biocommand-corrupted-" + Date.now() + ".txt";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
 /* ============================================================
    SHARED UTILITIES (js/modules/shared/*.js)
@@ -374,6 +428,20 @@ document.getElementById("btn-sys").addEventListener("click", () => showView("vie
 /* ============================================================
    BOOT
    ============================================================ */
+
+if (dbLoadResult.status === "corrupted") {
+  showStorageBanner(
+    "Your saved data could not be read and could not be recovered automatically. A raw copy of what was found has been kept so you can attempt manual recovery or share it for support. Starting from an empty store for now.",
+    "error",
+    "Download raw backup",
+    downloadCorruptedBackup
+  );
+} else if (!Storage.persistent) {
+  showStorageBanner(
+    "This browser is not saving data between visits (private browsing, or storage is blocked). Anything you log now will be LOST when you close or reload this page.",
+    "warn"
+  );
+}
 
 syncModule.renderUplink();
 settingsModule.render();
