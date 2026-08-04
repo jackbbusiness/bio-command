@@ -115,6 +115,25 @@
       }).join("");
     }
 
+    const UNIT_PRESETS = ["min", "g", "mg", "reps", "sets", "ml"];
+
+    function setUnitChips(unit) {
+      const chips = document.querySelectorAll("#pd-unit-chips .chip");
+      const customInput = document.getElementById("pd-unit");
+      const isPreset = unit && UNIT_PRESETS.includes(unit);
+      chips.forEach(c => c.classList.toggle("selected", isPreset ? c.dataset.unit === unit : c.dataset.unit === "__custom__"));
+      customInput.hidden = isPreset || !unit;
+      customInput.value = isPreset ? "" : (unit || "");
+      if (!unit) chips.forEach(c => c.classList.remove("selected"));
+    }
+
+    function currentUnit() {
+      const selected = document.querySelector("#pd-unit-chips .chip.selected");
+      if (!selected) return "";
+      if (selected.dataset.unit === "__custom__") return document.getElementById("pd-unit").value.trim();
+      return selected.dataset.unit;
+    }
+
     function openProtocolBuilder(id) {
       const DB = getDB();
       protocolEditId = id;
@@ -127,7 +146,7 @@
         document.getElementById("pd-name").value = p.name;
         document.getElementById("pd-category").value = p.category;
         document.getElementById("pd-target").value = p.targetValue || "";
-        document.getElementById("pd-unit").value = p.targetUnit || "";
+        setUnitChips(p.targetUnit || "");
         dayBtns.forEach(b => b.classList.toggle("active", (p.scheduleMask & (1 << Number(b.dataset.day))) !== 0));
         delBtn.style.display = "block";
       } else {
@@ -135,7 +154,7 @@
         document.getElementById("pd-name").value = "";
         document.getElementById("pd-category").value = "custom";
         document.getElementById("pd-target").value = "";
-        document.getElementById("pd-unit").value = "";
+        setUnitChips("");
         dayBtns.forEach(b => b.classList.add("active"));
         delBtn.style.display = "none";
       }
@@ -145,15 +164,41 @@
     function init() {
       document.getElementById("protocol-list").addEventListener("click", (ev) => {
         const DB = getDB();
-        const checkId = ev.target.dataset.checkproto;
-        if (checkId) {
+        const checkBtn = ev.target.closest("[data-checkproto]");
+        if (checkBtn) {
+          const checkId = checkBtn.dataset.checkproto;
           const today = dayKey();
           DB.completions[today] = DB.completions[today] || {};
           const existing = DB.completions[today][checkId];
           const nowDone = !(existing && existing.completed);
           DB.completions[today][checkId] = { completed: nowDone, loggedValue: null, loggedAt: new Date().toISOString() };
           saveDB(DB);
-          renderProtocolList();
+
+          // Update just this row in place instead of a full list
+          // re-render, so the check-off gets a satisfying pulse
+          // animation instead of the whole list silently flashing to
+          // its new state.
+          checkBtn.classList.toggle("done", nowDone);
+          checkBtn.innerHTML = nowDone ? "&#10003;" : "";
+          if (nowDone) {
+            checkBtn.classList.remove("check-pulse");
+            void checkBtn.offsetWidth;
+            checkBtn.classList.add("check-pulse");
+          }
+          const p = DB.protocols.find(x => x.id === checkId);
+          const metaEl = checkBtn.closest(".proto-row") && checkBtn.closest(".proto-row").querySelector(".proto-meta");
+          if (metaEl && p) {
+            const streak = streakFor(p);
+            const corr = correlationFor(p.id);
+            let corrText = "";
+            if (corr) {
+              const cls = corr.delta > 0 ? "corr-pos" : corr.delta < 0 ? "corr-neg" : "";
+              corrText = ' &middot; <span class="' + cls + '">Recovery ' + (corr.delta >= 0 ? "+" : "") + corr.delta + "pt on done days (n=" + corr.n + ")</span>";
+            }
+            metaEl.innerHTML = escapeHtml(CATEGORY_LABELS[p.category]) +
+              (p.targetValue ? " &middot; " + p.targetValue + escapeHtml(p.targetUnit || "") : "") +
+              " &middot; " + streak + "d streak" + corrText;
+          }
           return;
         }
         const row = ev.target.closest("[data-editproto]");
@@ -168,6 +213,14 @@
         const btn = ev.target.closest(".day-toggle");
         if (btn) btn.classList.toggle("active");
       });
+      document.getElementById("pd-unit-chips").addEventListener("click", (ev) => {
+        const chip = ev.target.closest(".chip");
+        if (!chip) return;
+        document.querySelectorAll("#pd-unit-chips .chip").forEach(c => c.classList.toggle("selected", c === chip));
+        const customInput = document.getElementById("pd-unit");
+        customInput.hidden = chip.dataset.unit !== "__custom__";
+        if (!customInput.hidden) customInput.focus();
+      });
       document.getElementById("btn-save-protocol").addEventListener("click", () => {
         const DB = getDB();
         const COLORS = getColors();
@@ -180,7 +233,7 @@
         const data = {
           name, category: document.getElementById("pd-category").value, scheduleMask: mask,
           targetValue: Number(document.getElementById("pd-target").value) || null,
-          targetUnit: document.getElementById("pd-unit").value.trim() || null,
+          targetUnit: currentUnit() || null,
           isActive: true
         };
         if (protocolEditId) {

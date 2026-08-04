@@ -324,6 +324,8 @@ const journalModule = window.BioCommandJournal.createJournalModule({
   saveDB,
   meanOf,
   escapeHtml,
+  createScoreRing,
+  hexToRgba,
   getDB: () => DB,
   getColors: () => COLORS
 });
@@ -349,10 +351,11 @@ function renderJournalProto() {
 const biomarkersModule = window.BioCommandBiomarkers.createBiomarkersModule({
   dayKey,
   saveDB,
-  loadAI: settingsModule.loadAI,
   hexToRgba,
   bigLine,
   escapeHtml,
+  advisor,
+  appendToken,
   getDB: () => DB,
   getColors: () => COLORS
 });

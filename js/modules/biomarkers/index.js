@@ -4,8 +4,6 @@
  * Runtime dependencies supplied by app.js:
  * - dayKey()
  * - saveDB()
- * - loadAI() — AI key config reader, still defined in app.js pending
- *   the Settings extraction; injected here rather than duplicated.
  * - hexToRgba() — still defined in app.js (color helper), pending the
  *   shared-utilities extraction.
  * - bigLine() — still defined in app.js (Detail Engine chart helper),
@@ -18,10 +16,13 @@
  *   name/category/unit/sourceNote and log labName before they're
  *   interpolated into a rendered HTML string (marker definitions and
  *   log entries can both come from import, not just manual entry).
+ * - advisor / appendToken — js/modules/shared/ai-stream.js, the same
+ *   shared instance every other AI consumer uses.
  */
 (function (global) {
-  function createBiomarkersModule({ dayKey, saveDB, loadAI, hexToRgba, bigLine, escapeHtml, getDB, getColors }) {
+  function createBiomarkersModule({ dayKey, saveDB, hexToRgba, bigLine, escapeHtml, advisor, appendToken, getDB, getColors }) {
     let markerOpenCode = null;
+    let pendingImport = null; // [{code, value, unit, date, accepted}]
 
     function seedDefaultMarkers() {
       const DB = getDB();
@@ -74,63 +75,108 @@
         "<br><span class=\"t3\">" + escapeHtml(marker.sourceNote) + "</span>";
     }
 
+    // Bounds the value slider to a plausible range for this specific
+    // marker -- clinical range padded 30%, or optimal range padded
+    // further if clinical bounds aren't defined (e.g. HDL only has a
+    // clinical floor). Typing an exact value in #mk-value still works
+    // untouched; the slider is a fast path to a value that's already
+    // in the right neighborhood, not the only way in.
+    function sliderRangeFor(marker) {
+      const lo = marker.clinicalLow ?? marker.optimalLow ?? 0;
+      const hi = marker.clinicalHigh ?? marker.optimalHigh ?? (lo > 0 ? lo * 3 : 100);
+      const span = Math.max(hi - lo, 1);
+      const min = Math.max(0, lo - span * 0.3);
+      const max = hi + span * 0.3;
+      const step = span > 50 ? 1 : span > 5 ? 0.5 : 0.1;
+      return { min, max, step };
+    }
+
+    function labNameOptions() {
+      const DB = getDB();
+      return Array.from(new Set(DB.biomarkerLogs.map(l => l.labName).filter(Boolean)));
+    }
+
     /* ---------- Bio AI import ---------- */
+    // Extracts markers via the shared advisor, then shows a per-row
+    // accept/reject preview instead of bulk-inserting straight away --
+    // the model's unit-conversion/date-guessing is fallible, so the
+    // operator confirms what actually lands in DB.biomarkerLogs.
     async function bioAIImport() {
       const DB = getDB();
       const COLORS = getColors();
       const status = document.getElementById("bio-import-status");
       const text = document.getElementById("bio-ai-paste").value.trim();
       if (!text) { status.textContent = "Paste lab results first."; status.style.color = COLORS.red; return; }
-      const cfg = loadAI();
-      if (!cfg || !cfg.key) { status.textContent = "Set Anthropic API key in SYS first."; status.style.color = COLORS.red; return; }
 
       status.innerHTML = '<span class="ai-thinking">READING LAB REPORT...</span>';
+      document.getElementById("bio-import-preview").hidden = true;
 
       const markers = Object.values(DB.markers);
       const markerList = markers.map(m => m.code + "=" + m.name + " (" + m.unit + ")").join(", ");
 
       try {
-        const res = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: { "x-api-key": cfg.key, "anthropic-version": "2023-06-01",
-            "content-type": "application/json", "anthropic-dangerous-direct-browser-access": "true" },
-          body: JSON.stringify({
-            model: "claude-sonnet-4-6", max_tokens: 600,
-            messages: [{ role: "user", content:
-              "Extract blood test results from this lab report text. " +
-              "Known markers to match: " + markerList + ". " +
-              "Return ONLY a JSON array of objects: [{code, value, unit, date}]. " +
-              "code must be one of the known marker codes. value must be a number. " +
-              "date should be the report date if visible, otherwise omit. " +
-              "Convert units if needed (e.g. nmol/L to ng/dL for testosterone: multiply by 28.84). " +
-              "If a marker is not in the report, exclude it. No markdown, no explanation.\n\nLAB REPORT:\n" + text
-            }]
-          })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error((data.error && data.error.message) || "HTTP " + res.status);
-        const raw = (data.content || []).map(b => b.text || "").join("").trim();
+        const raw = await advisor.ask(
+          "Extract blood test results from this lab report text. " +
+          "Known markers to match: " + markerList + ". " +
+          "Return ONLY a JSON array of objects: [{code, value, unit, date}]. " +
+          "code must be one of the known marker codes. value must be a number. " +
+          "date should be the report date if visible, otherwise omit. " +
+          "Convert units if needed (e.g. nmol/L to ng/dL for testosterone: multiply by 28.84). " +
+          "If a marker is not in the report, exclude it. No markdown, no explanation.\n\nLAB REPORT:\n" + text,
+          { maxTokens: 600 }
+        );
         const results = JSON.parse(raw.replace(/```json|```/g, "").trim());
         if (!Array.isArray(results) || !results.length) throw new Error("No markers recognised in this text.");
 
-        let imported = 0;
         const today = dayKey();
-        results.forEach(r => {
-          if (!r.code || r.value == null || !DB.markers[r.code]) return;
-          DB.biomarkerLogs.push({
-            code: r.code, date: r.date || today,
-            value: Number(r.value), labName: "AI Import", fasted: null
-          });
-          imported++;
-        });
-        saveDB(DB);
-        renderMarkerList();
-        status.textContent = imported + " marker" + (imported !== 1 ? "s" : "") + " imported. Tap any card to review.";
+        pendingImport = results
+          .filter(r => r.code && r.value != null && DB.markers[r.code])
+          .map(r => ({ code: r.code, value: Number(r.value), date: r.date || today, accepted: true }));
+        if (!pendingImport.length) throw new Error("No markers recognised in this text.");
+
+        status.textContent = pendingImport.length + " marker" + (pendingImport.length !== 1 ? "s" : "") + " found. Review below.";
         status.style.color = COLORS.green;
+        renderImportPreview();
       } catch (e) {
-        status.textContent = "Import failed: " + e.message;
+        status.textContent = e.message === "SET KEY IN SYS" ? "Set Anthropic API key in SYS first." : "Import failed: " + e.message;
         status.style.color = COLORS.red;
       }
+    }
+
+    function renderImportPreview() {
+      const DB = getDB();
+      const wrap = document.getElementById("bio-import-preview");
+      const host = document.getElementById("bio-import-preview-rows");
+      if (!pendingImport || !pendingImport.length) { wrap.hidden = true; return; }
+      wrap.hidden = false;
+      host.innerHTML = pendingImport.map((r, i) => {
+        const m = DB.markers[r.code];
+        return '<label class="bio-import-row' + (r.accepted ? "" : " rejected") + '" data-idx="' + i + '">' +
+          '<input type="checkbox"' + (r.accepted ? " checked" : "") + '>' +
+          '<span class="bir-code">' + escapeHtml(r.code) + '</span>' +
+          '<span class="bir-value">' + r.value + ' ' + escapeHtml(m ? m.unit : "") + '</span>' +
+          '<span class="bir-date">' + escapeHtml(r.date) + '</span>' +
+          '</label>';
+      }).join("");
+    }
+
+    function confirmImport() {
+      const DB = getDB();
+      const COLORS = getColors();
+      const status = document.getElementById("bio-import-status");
+      if (!pendingImport) return;
+      let imported = 0;
+      pendingImport.forEach(r => {
+        if (!r.accepted) return;
+        DB.biomarkerLogs.push({ code: r.code, date: r.date, value: r.value, labName: "AI Import", fasted: null });
+        imported++;
+      });
+      saveDB(DB);
+      renderMarkerList();
+      status.textContent = imported + " marker" + (imported !== 1 ? "s" : "") + " imported. Tap any card to review.";
+      status.style.color = COLORS.green;
+      pendingImport = null;
+      document.getElementById("bio-import-preview").hidden = true;
     }
 
     function renderMarkerList() {
@@ -184,10 +230,22 @@
       const chartWrap = document.getElementById("marker-chart-wrap");
       if (logs.length >= 2) {
         chartWrap.style.display = "block";
-        document.getElementById("marker-chart").innerHTML = bigLine(logs.map(l => l.value), COLORS.cyan);
+        const refBand = (m.optimalLow != null || m.optimalHigh != null)
+          ? [m.optimalLow, m.optimalHigh] : null;
+        document.getElementById("marker-chart").innerHTML = bigLine(logs.map(l => l.value), COLORS.cyan, null, refBand);
       } else {
         chartWrap.style.display = "none";
       }
+
+      const range = sliderRangeFor(m);
+      const slider = document.getElementById("mk-value-slider");
+      slider.min = range.min; slider.max = range.max; slider.step = range.step;
+      const mid = latest ? latest.value : (range.min + range.max) / 2;
+      slider.value = Math.min(range.max, Math.max(range.min, mid));
+      document.getElementById("mk-value-slider-val").textContent = slider.value;
+
+      const labList = document.getElementById("mk-lab-list");
+      labList.innerHTML = labNameOptions().map(l => '<option value="' + escapeHtml(l) + '"></option>').join("");
 
       document.getElementById("mk-value").value = "";
       document.getElementById("mk-date").value = dayKey();
@@ -209,6 +267,40 @@
       document.getElementById("btn-bio-ai-clear").addEventListener("click", () => {
         document.getElementById("bio-ai-paste").value = "";
         document.getElementById("bio-import-status").textContent = "";
+        pendingImport = null;
+        document.getElementById("bio-import-preview").hidden = true;
+      });
+
+      document.getElementById("bio-import-preview-rows").addEventListener("change", (ev) => {
+        const row = ev.target.closest("[data-idx]");
+        if (!row || !pendingImport) return;
+        const idx = Number(row.dataset.idx);
+        pendingImport[idx].accepted = ev.target.checked;
+        row.classList.toggle("rejected", !ev.target.checked);
+      });
+      document.getElementById("btn-bio-import-confirm").addEventListener("click", confirmImport);
+      document.getElementById("btn-bio-import-cancel").addEventListener("click", () => {
+        pendingImport = null;
+        document.getElementById("bio-import-preview").hidden = true;
+        document.getElementById("bio-import-status").textContent = "";
+      });
+
+      // Slider <-> typed-value sync: dragging fills #mk-value (what
+      // Save actually reads); typing an exact value keeps the slider
+      // thumb in sync too, clamped to its range.
+      const slider = document.getElementById("mk-value-slider");
+      const valueInput = document.getElementById("mk-value");
+      const sliderVal = document.getElementById("mk-value-slider-val");
+      slider.addEventListener("input", () => {
+        valueInput.value = slider.value;
+        sliderVal.textContent = slider.value;
+      });
+      valueInput.addEventListener("input", () => {
+        const v = parseFloat(valueInput.value);
+        if (Number.isFinite(v)) {
+          slider.value = Math.min(Number(slider.max), Math.max(Number(slider.min), v));
+          sliderVal.textContent = slider.value;
+        }
       });
 
       document.getElementById("marker-list").addEventListener("click", (ev) => {

@@ -6,6 +6,8 @@
  * - saveDB()
  * - meanOf() — still defined in app.js (Intel Engine), pending the
  *   shared-utilities extraction; injected here rather than duplicated.
+ * - createScoreRing() / hexToRgba() — js/modules/shared/score-ring.js;
+ *   the streak indicator's small ring (capped at a 7-day "week" fill).
  * - getDB() / getColors() — accessors rather than plain values, since
  *   DB and COLORS are both reassigned at runtime (import/reset/cloud
  *   sync for DB, theme toggle for COLORS).
@@ -21,7 +23,7 @@
  * entirely rather than just neutralizing it.
  */
 (function (global) {
-  function createJournalModule({ dayKey, saveDB, meanOf, escapeHtml, getDB, getColors }) {
+  function createJournalModule({ dayKey, saveDB, meanOf, escapeHtml, createScoreRing, hexToRgba, getDB, getColors }) {
     const JOURNAL_QUESTIONS = [
       { key: "ALCOHOL",       label: "Alcohol last night?" },
       { key: "STRESS",        label: "Stress elevated?" },
@@ -29,6 +31,30 @@
       { key: "POOR_SLEEP",    label: "Sleep disrupted?" },
       { key: "SICK",          label: "Feeling unwell?" }
     ];
+
+    // Two ring instances (Command's compact card, Protocols' full
+    // card) sharing the same "streak capped at a week" visual.
+    const streakRings = {};
+    ["cmd", "proto"].forEach((id) => {
+      const hook = document.getElementById(id === "cmd" ? "journal-streak-ring-hook" : "proto-journal-streak-ring-hook");
+      if (!hook) return;
+      const ring = createScoreRing({ radius: 7, hexToRgba });
+      hook.insertAdjacentHTML("afterbegin", ring.markup());
+      streakRings[id] = ring;
+    });
+
+    function updateStreakRing(id, numEl, streak) {
+      const COLORS = getColors();
+      const ring = streakRings[id];
+      if (ring) ring.setProgress(Math.min(streak, 7) / 7, streak > 0 ? COLORS.green : COLORS.dim);
+      if (numEl) numEl.textContent = streak + "d";
+    }
+
+    // Set right before a full re-render triggered by answering one
+    // question, so buildJournalUI can mark just that button for a
+    // pulse animation instead of every button replaying it on any
+    // unrelated re-render.
+    let justAnsweredKey = null;
 
     function getJournalEntry(day) {
       const DB = getDB();
@@ -71,12 +97,15 @@
 
       JOURNAL_QUESTIONS.forEach(q => {
         const ans = entry.answers[q.key];
+        const justAnswered = q.key === justAnsweredKey;
         const row = document.createElement("div");
         row.className = "jq-row";
         row.innerHTML =
           '<span class="jq-q">' + q.label + '</span><span class="jq-opts">' +
-          '<button class="jq-btn' + (ans === true ? " sel" : "") + '" data-jkey="' + q.key + '" data-jval="true">YES</button>' +
-          '<button class="jq-btn' + (ans === false ? " sel" : "") + '" data-jkey="' + q.key + '" data-jval="false">NO</button>' +
+          '<button class="jq-btn' + (ans === true ? " sel" : "") + (justAnswered && ans === true ? " jq-pulse" : "") +
+            '" data-jkey="' + q.key + '" data-jval="true">YES</button>' +
+          '<button class="jq-btn' + (ans === false ? " sel" : "") + (justAnswered && ans === false ? " jq-pulse" : "") +
+            '" data-jkey="' + q.key + '" data-jval="false">NO</button>' +
           '</span>';
         container.appendChild(row);
       });
@@ -100,10 +129,17 @@
         const btn = ev.target.closest(".jq-btn");
         if (!btn) return;
         const val = btn.dataset.jval === "true";
+        justAnsweredKey = btn.dataset.jkey;
         setJournalAnswer(day, btn.dataset.jkey, val);
+        // Always refresh both renders regardless of which container
+        // was edited -- previously only a cmd-side edit propagated to
+        // proto; an edit made directly on the proto view's own full
+        // journal never re-rendered that same container in-session
+        // (the answer still saved correctly, it just didn't visually
+        // show as selected until something unrelated re-rendered it).
         renderJournal();
-        if (container.id === "cmd-journal-body") renderJournalProto();
-        else renderJournal();
+        renderJournalProto();
+        justAnsweredKey = null;
       });
     }
 
@@ -116,8 +152,7 @@
       const dot = document.getElementById("journal-cmd-dot");
       if (dot) dot.style.color = allAnswered ? COLORS.green : COLORS.amber;
 
-      const streakEl = document.getElementById("journal-streak");
-      if (streakEl) streakEl.textContent = streak + "d streak";
+      updateStreakRing("cmd", document.getElementById("journal-streak-num"), streak);
 
       buildJournalUI(document.getElementById("cmd-journal-body"), today, true);
     }
@@ -127,8 +162,7 @@
       const COLORS = getColors();
       const today = dayKey();
       const streak = journalStreakCount();
-      const streakEl = document.getElementById("proto-journal-streak");
-      if (streakEl) streakEl.textContent = streak + "d streak";
+      updateStreakRing("proto", document.getElementById("proto-journal-streak-num"), streak);
       buildJournalUI(document.getElementById("proto-journal-body"), today, false);
 
       // Behavior insights: correlate each journal key vs recovery

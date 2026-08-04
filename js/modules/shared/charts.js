@@ -97,16 +97,33 @@
       return '<svg class="mc-spark" viewBox="0 0 132 38">' + rects + "</svg>";
     }
 
-    function bigLine(values, color, labels) {
+    // `band` (optional [low, high], either end nullable) shades a
+    // reference range behind the line -- used for the biomarker trend
+    // chart's optimal-range context. The data domain expands to
+    // include the band so it's never shaded entirely off-chart when
+    // all logged values sit outside it.
+    function bigLine(values, color, labels, band) {
       const n = values.length;
       const defined = values.map((v, i) => ({ v, i })).filter(p => p.v != null);
       if (!defined.length) return '<svg class="detail-chart" viewBox="0 0 320 100"></svg>';
       const vals = defined.map(p => p.v);
-      const min = Math.min(...vals), max = Math.max(...vals);
+      let min = Math.min(...vals), max = Math.max(...vals);
+      if (band) {
+        if (band[0] != null) min = Math.min(min, band[0]);
+        if (band[1] != null) max = Math.max(max, band[1]);
+      }
       const pad = (max - min) * 0.18 || Math.max(1, max * 0.05);
       const lo = min - pad, hi = max + pad;
       const x = i => 14 + i * (320 - 28) / Math.max(1, n - 1);
       const y = v => 90 - (v - lo) / (hi - lo) * 66;
+
+      let bandRect = "";
+      if (band && (band[0] != null || band[1] != null)) {
+        const bTop = y(band[1] != null ? band[1] : hi);
+        const bBottom = y(band[0] != null ? band[0] : lo);
+        bandRect = '<rect x="14" y="' + bTop.toFixed(1) + '" width="292" height="' + (bBottom - bTop).toFixed(1) +
+          '" fill="' + hexToRgba(color, 0.1) + '" stroke="none"></rect>';
+      }
 
       const d = smoothPath(defined, x, y);
       const last = defined[defined.length - 1];
@@ -121,7 +138,7 @@
           '<circle class="chart-hit" cx="' + x(p.i).toFixed(1) + '" cy="' + y(p.v).toFixed(1) +
           '" r="11" fill="transparent" data-val="' + p.v + '" data-label="' + label + '"></circle>';
       }).join("");
-      return '<svg class="detail-chart" viewBox="0 0 320 100">' + area +
+      return '<svg class="detail-chart" viewBox="0 0 320 100">' + bandRect + area +
         '<path d="' + d + '" fill="none" stroke="' + color +
         '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>' +
         dots + "</svg>";

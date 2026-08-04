@@ -14,7 +14,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.openfoodfacts.org; media-src 'self' blob:; font-src 'self'; connect-src 'self' https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <script src="js/vendor/supabase.min.js?v=2.112.0"></script>
 <script src="js/theme-boot.js?v=2.3.0"></script>
-<link rel="stylesheet" href="css/app.css?v=2.7.0">
+<link rel="stylesheet" href="css/app.css?v=2.8.0">
 <link rel="stylesheet" href="css/intelligence.css?v=2.3.1">
 <link rel="stylesheet" href="css/history.css?v=2.7.0">
 </head>
@@ -179,7 +179,10 @@
         <span class="status-dot" id="journal-cmd-dot" style="color: var(--amber)"></span>
         <span class="hud-label">Morning Journal</span>
         <span class="spacer"></span>
-        <span class="j-streak" id="journal-streak"></span>
+        <div class="j-streak" id="journal-streak">
+          <span class="ring-wrap" id="journal-streak-ring-hook" style="--ring-size:20px;"></span>
+          <span class="j-streak-num" id="journal-streak-num"></span>
+        </div>
       </div>
       <div class="journal-card" id="cmd-journal-body"></div>
     </div>
@@ -364,6 +367,14 @@
         <button class="tac-btn" id="btn-bio-ai-clear" style="flex:1;">Clear</button>
       </div>
       <div class="telemetry cap t3" id="bio-import-status" style="margin-top:8px;"></div>
+      <div id="bio-import-preview" hidden style="margin-top:12px;">
+        <div class="hud-label" style="margin-bottom:8px;">Review before importing</div>
+        <div id="bio-import-preview-rows" style="display:flex; flex-direction:column; gap:6px;"></div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="tac-btn primary" id="btn-bio-import-confirm" style="flex:1;">Import selected</button>
+          <button class="tac-btn" id="btn-bio-import-cancel" style="flex:1;">Cancel</button>
+        </div>
+      </div>
     </div>
 
     <div class="span-2" style="padding:0 2px;">
@@ -386,7 +397,10 @@
         <span class="status-dot" style="color:var(--amber)"></span>
         <span class="hud-label">Journal</span>
         <span class="spacer"></span>
-        <span class="j-streak" id="proto-journal-streak"></span>
+        <div class="j-streak" id="proto-journal-streak">
+          <span class="ring-wrap" id="proto-journal-streak-ring-hook" style="--ring-size:20px;"></span>
+          <span class="j-streak-num" id="proto-journal-streak-num"></span>
+        </div>
       </div>
       <div class="journal-card" id="proto-journal-body" style="margin-bottom:12px;"></div>
     </div>
@@ -874,19 +888,22 @@
       <div id="marker-chart"></div>
     </div>
 
+    <datalist id="mk-lab-list"></datalist>
+
     <div class="hud-label" style="margin-top:18px; margin-bottom:8px;">Log New Result</div>
     <div class="form-grid">
-      <div>
-        <label class="hud-label field-lbl" for="mk-value">Value</label>
-        <input class="tac-input" id="mk-value" type="number" inputmode="decimal" step="0.1">
+      <div class="full">
+        <label class="hud-label field-lbl" for="mk-value">Value <span class="slider-val" id="mk-value-slider-val"></span></label>
+        <input class="tac-range" id="mk-value-slider" type="range" step="0.1" style="margin-bottom:8px;">
+        <input class="tac-input" id="mk-value" type="number" inputmode="decimal" step="0.1" placeholder="Or type exact value">
       </div>
       <div>
         <label class="hud-label field-lbl" for="mk-date">Date</label>
         <input class="tac-input" id="mk-date" type="date">
       </div>
-      <div class="full">
+      <div>
         <label class="hud-label field-lbl" for="mk-lab">Lab (optional)</label>
-        <input class="tac-input" id="mk-lab" type="text" placeholder="Quest, LabCorp...">
+        <input class="tac-input" id="mk-lab" type="text" list="mk-lab-list" placeholder="Quest, LabCorp...">
       </div>
       <div class="full" style="display:flex; align-items:center; gap:10px;">
         <input type="checkbox" id="mk-fasted" style="width:20px; height:20px;">
@@ -945,8 +962,17 @@
         <input class="tac-input" id="pd-target" type="number" inputmode="decimal" step="0.5">
       </div>
       <div>
-        <label class="hud-label field-lbl" for="pd-unit">Unit</label>
-        <input class="tac-input" id="pd-unit" type="text" placeholder="min, g...">
+        <label class="hud-label field-lbl">Unit</label>
+        <div class="chip-row" id="pd-unit-chips">
+          <button type="button" class="chip" data-unit="min">min</button>
+          <button type="button" class="chip" data-unit="g">g</button>
+          <button type="button" class="chip" data-unit="mg">mg</button>
+          <button type="button" class="chip" data-unit="reps">reps</button>
+          <button type="button" class="chip" data-unit="sets">sets</button>
+          <button type="button" class="chip" data-unit="ml">ml</button>
+          <button type="button" class="chip" data-unit="__custom__">Custom</button>
+        </div>
+        <input class="tac-input" id="pd-unit" type="text" placeholder="Custom unit" style="margin-top:8px; font-size:13px;" hidden>
       </div>
       <div class="full telemetry cap t3" id="protocol-builder-status"></div>
       <div class="full btn-row" style="margin-top:6px;">
@@ -1090,7 +1116,7 @@
 <script src="js/modules/shared/dom.js?v=2.2.2"></script>
 <script src="js/modules/shared/ids.js?v=2.2.2"></script>
 <script src="js/modules/shared/colors.js?v=2.3.1"></script>
-<script src="js/modules/shared/charts.js?v=2.7.0"></script>
+<script src="js/modules/shared/charts.js?v=2.8.0"></script>
 <script src="js/modules/shared/scoring.js?v=2.2.2"></script>
 <script src="js/modules/shared/sanitize.js?v=2.2.2"></script>
 <script src="js/modules/shared/focus-trap.js?v=2.3.2"></script>
@@ -1101,15 +1127,15 @@
 <script src="js/modules/history/index.js?v=2.7.0"></script>
 <script src="js/modules/fuel/index.js?v=2.6.0"></script>
 <script src="js/modules/training/index.js?v=2.5.0"></script>
-<script src="js/modules/journal/index.js?v=2.2.2"></script>
-<script src="js/modules/biomarkers/index.js?v=2.2.2"></script>
-<script src="js/modules/protocols/index.js?v=2.2.2"></script>
+<script src="js/modules/journal/index.js?v=2.8.0"></script>
+<script src="js/modules/biomarkers/index.js?v=2.8.0"></script>
+<script src="js/modules/protocols/index.js?v=2.8.0"></script>
 <script src="js/modules/dashboard/index.js?v=2.4.0"></script>
 <script src="js/modules/settings/index.js?v=2.3.1"></script>
 <script src="js/modules/data-management/index.js?v=2.2.2"></script>
 <script src="js/modules/sync/index.js?v=2.4.0"></script>
 <script src="js/modules/notifications/index.js?v=2.2.2"></script>
-<script src="js/app.js?v=2.7.0"></script>
+<script src="js/app.js?v=2.8.0"></script>
 <script src="js/intelligence.js?v=2.2.2"></script>
 <script src="js/history.js?v=2.7.0"></script>
 </body>
