@@ -189,6 +189,37 @@
       return '<svg class="detail-chart" viewBox="0 0 320 100">' + rects + "</svg>";
     }
 
+    // Overlays N smoothed lines on one 320x100 canvas, each series
+    // normalized against its own [min,max] domain (so e.g. a 0-100
+    // recovery score and a 0-21 strain score can share one chart
+    // meaningfully, matching how the old History trend bars
+    // normalized recovery/strain independently). Each series:
+    // { values, color, domain: [min,max], seriesLabel, pointLabels }.
+    // Hit targets carry the *actual* (non-normalized) value.
+    function bigMultiLine(series) {
+      const n = Math.max(0, ...series.map(s => s.values.length));
+      const x = i => 14 + i * (320 - 28) / Math.max(1, n - 1);
+      let paths = "", hits = "";
+      series.forEach(s => {
+        const [dmin, dmax] = s.domain;
+        const y = v => 90 - clamp01((v - dmin) / (dmax - dmin || 1)) * 66;
+        const defined = s.values.map((v, i) => ({ v, i })).filter(p => p.v != null);
+        if (!defined.length) return;
+        const d = smoothPath(defined, x, y);
+        paths += '<path d="' + d + '" fill="none" stroke="' + s.color +
+          '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>';
+        defined.forEach(p => {
+          const ptLabel = s.pointLabels && s.pointLabels[p.i] != null ? s.pointLabels[p.i] : "";
+          const label = (s.seriesLabel ? s.seriesLabel + (ptLabel ? " " + ptLabel : "") : ptLabel);
+          hits += '<circle cx="' + x(p.i).toFixed(1) + '" cy="' + y(p.v).toFixed(1) +
+            '" r="2.6" fill="' + s.color + '"></circle>' +
+            '<circle class="chart-hit" cx="' + x(p.i).toFixed(1) + '" cy="' + y(p.v).toFixed(1) +
+            '" r="11" fill="transparent" data-val="' + p.v + '" data-label="' + label + '"></circle>';
+        });
+      });
+      return '<svg class="detail-chart" viewBox="0 0 320 100">' + paths + hits + "</svg>";
+    }
+
     // Wires tap/hover tooltips onto a chart SVG's invisible `.chart-hit`
     // marks (added by bigLine/bigBars when a `labels` array is passed).
     // A no-op if the chart wasn't built with labels -- no .chart-hit
@@ -238,7 +269,7 @@
       return { hide };
     }
 
-    return { sparkLine, sparkBars, bigLine, bigBars, bigStacked, wireChartTooltip };
+    return { sparkLine, sparkBars, bigLine, bigBars, bigStacked, bigMultiLine, wireChartTooltip };
   }
 
   global.BioCommandShared = global.BioCommandShared || {};

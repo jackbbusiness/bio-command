@@ -14,9 +14,9 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.openfoodfacts.org; media-src 'self' blob:; font-src 'self'; connect-src 'self' https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <script src="js/vendor/supabase.min.js?v=2.112.0"></script>
 <script src="js/theme-boot.js?v=2.3.0"></script>
-<link rel="stylesheet" href="css/app.css?v=2.6.0">
+<link rel="stylesheet" href="css/app.css?v=2.7.0">
 <link rel="stylesheet" href="css/intelligence.css?v=2.3.1">
-<link rel="stylesheet" href="css/history.css?v=2.3.1">
+<link rel="stylesheet" href="css/history.css?v=2.7.0">
 </head>
 <body>
 
@@ -426,43 +426,76 @@
       <input id="history-date-input" class="history-native-date" type="date" aria-label="Choose date">
     </div>
 
-    <div class="history-range-row span-2" id="history-range-row">
-      <button class="history-range active" data-days="7">7D</button>
-      <button class="history-range" data-days="30">30D</button>
-      <button class="history-range" data-days="90">90D</button>
-      <button class="history-range" data-days="365">1Y</button>
-      <button class="history-range" data-days="0">ALL</button>
+    <div class="span-2" style="display:flex; align-items:center; gap:8px;">
+      <div class="history-range-row" id="history-range-row" style="flex:1;">
+        <button class="history-range active" data-days="7">7D</button>
+        <button class="history-range" data-days="30">30D</button>
+        <button class="history-range" data-days="90">90D</button>
+        <button class="history-range" data-days="365">1Y</button>
+        <button class="history-range" data-days="0">ALL</button>
+      </div>
+      <button class="btn-icon" id="btn-history-today" type="button" aria-label="Jump to today" title="Today">
+        <svg class="icon icon-sm" aria-hidden="true"><use href="#icon-calendar"></use></svg>
+      </button>
+      <button class="btn-icon" id="btn-history-search-toggle" type="button" aria-label="Search history">
+        <svg class="icon icon-sm" aria-hidden="true"><use href="#icon-search"></use></svg>
+      </button>
+      <button class="btn-icon" id="btn-history-filter-toggle" type="button" aria-label="Filter what's shown">
+        <svg class="icon icon-sm" aria-hidden="true"><use href="#icon-filter"></use></svg>
+      </button>
     </div>
 
-    <div class="history-metric-grid span-2" id="history-day-metrics"></div>
+    <div class="span-2" id="history-search-row" hidden>
+      <input class="tac-input" id="history-search-input" type="text" placeholder="Search notes, workouts, meals..."
+             style="font-size:14px;" autocapitalize="off">
+    </div>
 
+    <div class="span-2 chip-row" id="history-filter-row" hidden>
+      <button class="chip selected" data-filter="wearable">Wearable</button>
+      <button class="chip selected" data-filter="sleep">Sleep</button>
+      <button class="chip selected" data-filter="training">Training</button>
+      <button class="chip selected" data-filter="fuel">Fuel</button>
+      <button class="chip selected" data-filter="protocols">Protocols</button>
+      <button class="chip selected" data-filter="journal">Journal</button>
+      <button class="chip selected" data-filter="biomarkers">Biomarkers</button>
+    </div>
+
+    <!-- AI trend summary (5th ai-stream.js consumer) -->
+    <div class="hud-card span-2" id="history-ai-card">
+      <div class="card-head">
+        <span class="status-dot" id="history-ai-dot" style="color: var(--text-3)"></span>
+        <span class="hud-label">Trend Summary</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3" id="history-ai-status"></span>
+      </div>
+      <div class="brief-out" id="history-ai-out"></div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="tac-btn primary" id="btn-history-ai-summary" style="flex:1;">Generate summary</button>
+      </div>
+    </div>
+
+    <!-- Multi-series trend chart -->
     <div class="hud-card span-2">
       <div class="card-head">
-        <span class="status-dot" style="color:var(--cyan)"></span>
-        <span class="hud-label">Range Intelligence</span>
+        <span class="hud-label">Trend</span>
         <span class="spacer"></span>
         <span class="telemetry cap t3" id="history-range-caption"></span>
       </div>
+      <div class="chip-row" id="history-series-toggle" style="margin-bottom:10px;">
+        <button class="chip selected" data-series="recovery">Recovery</button>
+        <button class="chip selected" data-series="strain">Strain</button>
+        <button class="chip selected" data-series="sleep">Sleep</button>
+      </div>
+      <div id="history-chart-host"></div>
       <div class="history-range-summary" id="history-range-summary"></div>
-      <div class="history-trend" id="history-trend"></div>
     </div>
 
-    <div class="hud-card span-2">
-      <div class="card-head">
-        <span class="hud-label">Daily Record</span>
-        <span class="spacer"></span>
-        <span class="telemetry cap t3">ALL MODULES</span>
+    <!-- Expandable timeline -->
+    <div class="span-2">
+      <div class="card-head" style="margin-bottom:9px; padding:0 2px;">
+        <span class="hud-label">Timeline</span>
       </div>
-      <div class="history-record" id="history-record"></div>
-    </div>
-
-    <div class="hud-card span-2">
-      <div class="card-head">
-        <span class="hud-label">Recent Days</span>
-        <span class="spacer"></span>
-        <button class="tac-btn" id="history-today" type="button" style="min-height:32px;padding:5px 12px;">Today</button>
-      </div>
-      <div class="history-day-strip" id="history-day-strip"></div>
+      <div id="history-timeline"></div>
     </div>
   </section>
 
@@ -1057,7 +1090,7 @@
 <script src="js/modules/shared/dom.js?v=2.2.2"></script>
 <script src="js/modules/shared/ids.js?v=2.2.2"></script>
 <script src="js/modules/shared/colors.js?v=2.3.1"></script>
-<script src="js/modules/shared/charts.js?v=2.3.3"></script>
+<script src="js/modules/shared/charts.js?v=2.7.0"></script>
 <script src="js/modules/shared/scoring.js?v=2.2.2"></script>
 <script src="js/modules/shared/sanitize.js?v=2.2.2"></script>
 <script src="js/modules/shared/focus-trap.js?v=2.3.2"></script>
@@ -1065,7 +1098,7 @@
 <script src="js/modules/shared/score-ring.js?v=2.3.3"></script>
 <script src="js/modules/shared/toast.js?v=2.3.3"></script>
 <script src="js/modules/shared/ai-stream.js?v=2.6.0"></script>
-<script src="js/modules/history/index.js?v=2.2.2"></script>
+<script src="js/modules/history/index.js?v=2.7.0"></script>
 <script src="js/modules/fuel/index.js?v=2.6.0"></script>
 <script src="js/modules/training/index.js?v=2.5.0"></script>
 <script src="js/modules/journal/index.js?v=2.2.2"></script>
@@ -1076,8 +1109,8 @@
 <script src="js/modules/data-management/index.js?v=2.2.2"></script>
 <script src="js/modules/sync/index.js?v=2.4.0"></script>
 <script src="js/modules/notifications/index.js?v=2.2.2"></script>
-<script src="js/app.js?v=2.6.0"></script>
+<script src="js/app.js?v=2.7.0"></script>
 <script src="js/intelligence.js?v=2.2.2"></script>
-<script src="js/history.js?v=2.2.2"></script>
+<script src="js/history.js?v=2.7.0"></script>
 </body>
 </html>

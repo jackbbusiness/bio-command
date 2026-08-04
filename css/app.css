@@ -109,6 +109,15 @@ html[data-theme="light"] {
 }
 
 * { box-sizing: border-box; }
+/* The native [hidden] attribute is only as strong as the UA
+   stylesheet's `display:none` (specificity 0,1,0) -- any author class
+   that also sets `display` (.chip-row, .btn-row, etc.) wins the
+   cascade at equal specificity and silently keeps the element
+   visible. Found via .chip-row[hidden] rendering visible on History's
+   filter row; .btn-row[hidden] (#restore-backup-row) had the same
+   latent bug already. Forcing it here makes `hidden` reliably mean
+   hidden regardless of what other classes an element carries. */
+[hidden] { display: none !important; }
 html, body { height: 100%; }
 
 body {

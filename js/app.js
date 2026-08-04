@@ -98,7 +98,7 @@ let COLORS = readColors();
 const { bandColor, bandName } = window.BioCommandShared.colors.createColorHelpers({
   getColors: () => COLORS
 });
-const { sparkLine, sparkBars, bigLine, bigBars, bigStacked } = window.BioCommandShared.charts.createChartHelpers({
+const { sparkLine, sparkBars, bigLine, bigBars, bigStacked, bigMultiLine, wireChartTooltip } = window.BioCommandShared.charts.createChartHelpers({
   getColors: () => COLORS,
   hexToRgba,
   clamp01
