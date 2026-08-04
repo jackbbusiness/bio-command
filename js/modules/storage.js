@@ -49,6 +49,25 @@
   const DB_KEY = "biocommand.db.v1";
   const DB_CORRUPTED_BACKUP_KEY = DB_KEY + ".corrupted";
 
+  // AI briefing text is appended once per day (Dashboard's generateBriefing)
+  // with nothing that ever removes an old entry, so DB.briefings grows by
+  // one text blob per active day forever. Retention is capped at 90 days
+  // (roughly one quarter -- matches the "90 Day" range already offered
+  // elsewhere in the app) so a long-time user's DB doesn't grow without
+  // bound purely from this one field.
+  const BRIEFING_RETENTION_DAYS = 90;
+
+  function pruneBriefings(db) {
+    if (!db || !db.briefings || typeof db.briefings !== "object") return;
+    const keys = Object.keys(db.briefings);
+    if (keys.length <= BRIEFING_RETENTION_DAYS) return;
+    // Briefing keys are dayKey() strings ("YYYY-MM-DD"), which sort
+    // lexicographically in chronological order -- reverse for newest-first.
+    keys.sort().reverse().slice(BRIEFING_RETENTION_DAYS).forEach((k) => {
+      delete db.briefings[k];
+    });
+  }
+
   function emptyDB() {
     return {
       version: 1,
@@ -123,6 +142,7 @@
   function saveDB(db, options) {
     const opts = options || {};
     const callbacks = opts.onPersist || [];
+    pruneBriefings(db);
     let json;
     try {
       json = JSON.stringify(db);
@@ -141,8 +161,10 @@
     Storage,
     DB_KEY,
     DB_CORRUPTED_BACKUP_KEY,
+    BRIEFING_RETENTION_DAYS,
     emptyDB,
     loadDB,
-    saveDB
+    saveDB,
+    pruneBriefings
   };
 })(window);
