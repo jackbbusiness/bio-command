@@ -490,7 +490,23 @@
     function enqueueCloudSync() {
       if (!getSB() || !_currentUser) return;
       clearTimeout(_syncTimer);
-      _syncTimer = setTimeout(() => cloudPush(), 2000);
+      _syncTimer = setTimeout(() => { _syncTimer = null; cloudPush(); }, 2000);
+    }
+
+    // Called when the app is backgrounded/hidden/closed. If a debounced
+    // push is still waiting out its 2s delay, run it immediately instead
+    // -- backgrounded tabs can have their timers suspended before that
+    // delay elapses, especially on mobile, which would otherwise strand
+    // a locally-saved edit without a cloud copy until the app is next
+    // opened. No-ops if nothing is pending, so calling it from multiple
+    // listeners (visibilitychange and pagehide can both fire) never
+    // produces a duplicate push. Fire-and-forget: never awaited here, so
+    // it cannot delay or block navigation/unload.
+    function flushPendingSync() {
+      if (_syncTimer == null) return;
+      clearTimeout(_syncTimer);
+      _syncTimer = null;
+      cloudPush();
     }
 
     // Override saveDB to also enqueue a cloud sync
@@ -641,6 +657,17 @@
         Storage.remove(SB_CONFIG_KEY);
         renderCloudCard();
       });
+
+      // visibilitychange fires (reliably, and early) when the app is
+      // backgrounded, tab-switched, or the device is locked -- well
+      // before a background tab's timers get suspended. pagehide is a
+      // backstop for navigation/close paths that skip straight to
+      // unload. Both just call the same idempotent, no-op-if-nothing-
+      // pending flush.
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") flushPendingSync();
+      });
+      window.addEventListener("pagehide", flushPendingSync);
     }
 
     function render() {
@@ -654,7 +681,7 @@
       loadSyncConfig, syncNow, initSupabase,
       hasPassphrase: () => !!loadPassphrase(),
       getSB, getCurrentUser: () => _currentUser,
-      enqueueCloudSync
+      enqueueCloudSync, flushPendingSync
     };
   }
 
