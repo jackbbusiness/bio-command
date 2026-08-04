@@ -27,6 +27,7 @@ const SHELL_URLS = [
   APP_ROOT + "js/modules/training/index.js?v=2.2.2",
   APP_ROOT + "js/modules/journal/index.js?v=2.2.2",
   APP_ROOT + "js/modules/biomarkers/index.js?v=2.2.2",
+  APP_ROOT + "js/modules/protocols/index.js?v=2.2.2",
   APP_ROOT + "js/app.js?v=2.2.2",
   APP_ROOT + "js/intelligence.js?v=2.2.2",
   APP_ROOT + "js/history.js?v=2.2.2"
