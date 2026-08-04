@@ -36,7 +36,7 @@
       } else {
         delete document.documentElement.dataset.theme;
       }
-      metaTheme.setAttribute("content", mode === "light" ? "#EFF2F5" : "#0D0F12");
+      metaTheme.setAttribute("content", getComputedStyle(document.documentElement).getPropertyValue("--tac-base").trim());
       btnTheme.textContent = mode === "light" ? "DAY" : "NIGHT";
       setColors(readColors());
       renderCommand();

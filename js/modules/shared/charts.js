@@ -128,7 +128,7 @@
       const n = days.length;
       const maxTotal = Math.max(...days.map(d => (d.deep || 0) + (d.core || 0) + (d.rem || 0) + (d.awake || 0)), 1);
       const slot = (320 - 16) / n, bw = slot * 0.55;
-      const seg = [["deep", "#2456C9"], ["core", "#3B4552"], ["rem", COLORS.cyan], ["awake", COLORS.red]];
+      const seg = [["deep", COLORS.sleepDeep], ["core", COLORS.sleepCore], ["rem", COLORS.cyan], ["awake", COLORS.red]];
       let rects = "";
       days.forEach((d, i) => {
         const cx = 8 + i * slot + slot / 2;

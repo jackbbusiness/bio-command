@@ -12,15 +12,15 @@
        Edge Function cron once that step is configured.
    ============================================================ */
 
-const CACHE_VERSION = "bc-v2.3.0-csp-hardening";
+const CACHE_VERSION = "bc-v2.3.1-design-tokens";
 const APP_ROOT = self.registration.scope;
 const SHELL_URLS = [
   APP_ROOT,
   APP_ROOT + "index.html",
   APP_ROOT + "manifest.json",
-  APP_ROOT + "css/app.css?v=2.2.2",
-  APP_ROOT + "css/intelligence.css?v=2.2.2",
-  APP_ROOT + "css/history.css?v=2.2.2",
+  APP_ROOT + "css/app.css?v=2.3.1",
+  APP_ROOT + "css/intelligence.css?v=2.3.1",
+  APP_ROOT + "css/history.css?v=2.3.1",
   APP_ROOT + "js/vendor/supabase.min.js?v=2.112.0",
   APP_ROOT + "js/vendor/html5-qrcode.min.js?v=2.3.8",
   APP_ROOT + "js/theme-boot.js?v=2.3.0",
@@ -29,8 +29,8 @@ const SHELL_URLS = [
   APP_ROOT + "js/modules/shared/formatting.js?v=2.2.2",
   APP_ROOT + "js/modules/shared/dom.js?v=2.2.2",
   APP_ROOT + "js/modules/shared/ids.js?v=2.2.2",
-  APP_ROOT + "js/modules/shared/colors.js?v=2.2.2",
-  APP_ROOT + "js/modules/shared/charts.js?v=2.2.2",
+  APP_ROOT + "js/modules/shared/colors.js?v=2.3.1",
+  APP_ROOT + "js/modules/shared/charts.js?v=2.3.1",
   APP_ROOT + "js/modules/shared/scoring.js?v=2.2.2",
   APP_ROOT + "js/modules/shared/sanitize.js?v=2.2.2",
   APP_ROOT + "js/modules/history/index.js?v=2.2.2",
@@ -39,8 +39,8 @@ const SHELL_URLS = [
   APP_ROOT + "js/modules/journal/index.js?v=2.2.2",
   APP_ROOT + "js/modules/biomarkers/index.js?v=2.2.2",
   APP_ROOT + "js/modules/protocols/index.js?v=2.2.2",
-  APP_ROOT + "js/modules/dashboard/index.js?v=2.2.2",
-  APP_ROOT + "js/modules/settings/index.js?v=2.2.2",
+  APP_ROOT + "js/modules/dashboard/index.js?v=2.3.1",
+  APP_ROOT + "js/modules/settings/index.js?v=2.3.1",
   APP_ROOT + "js/modules/data-management/index.js?v=2.2.2",
   APP_ROOT + "js/modules/sync/index.js?v=2.2.2",
   APP_ROOT + "js/modules/notifications/index.js?v=2.2.2",

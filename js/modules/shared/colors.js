@@ -25,7 +25,9 @@
       amber: cs.getPropertyValue("--amber").trim(),
       green: cs.getPropertyValue("--green").trim(),
       cyan:  cs.getPropertyValue("--cyan").trim(),
-      dim:   cs.getPropertyValue("--text-3").trim()
+      dim:   cs.getPropertyValue("--text-3").trim(),
+      sleepDeep: cs.getPropertyValue("--sleep-deep").trim(),
+      sleepCore: cs.getPropertyValue("--sleep-core").trim()
     };
   }
 

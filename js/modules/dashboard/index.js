@@ -641,9 +641,9 @@
     function renderSleep(t) {
       const COLORS = getColors();
       const segs = [
-        { key: "sleepDeepMin",  label: "DEEP",  color: "#2456C9" },
+        { key: "sleepDeepMin",  label: "DEEP",  color: COLORS.sleepDeep },
         { key: "sleepREMMin",   label: "REM",   color: COLORS.cyan },
-        { key: "sleepCoreMin",  label: "CORE",  color: "#3B4552" },
+        { key: "sleepCoreMin",  label: "CORE",  color: COLORS.sleepCore },
         { key: "sleepAwakeMin", label: "AWAKE", color: COLORS.red }
       ];
       const total = segs.reduce((sum, x) => sum + (t[x.key] || 0), 0);
