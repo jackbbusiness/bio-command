@@ -5,6 +5,13 @@
  * buttons flanking a `.stepper-value` input) with +/- click handling and
  * min/max/step clamping. Typing directly into the value input still
  * works untouched -- this only adds the button behavior on top.
+ *
+ * Button clicks also dispatch a real "input" event on the underlying
+ * input (setting .value via JS never does this on its own), so any
+ * existing delegated `input`-event listener a consumer already has on
+ * an ancestor (e.g. Training's set-row state sync) picks up
+ * stepper-driven changes transparently, with no awareness that a
+ * stepper is involved.
  */
 (function (global) {
   function wireStepper(root, { min, max, step, value, onChange } = {}) {
@@ -24,7 +31,10 @@
     function set(v, emit) {
       v = clamp(round(v));
       input.value = String(v);
-      if (emit !== false && typeof onChange === "function") onChange(v);
+      if (emit !== false) {
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        if (typeof onChange === "function") onChange(v);
+      }
       return v;
     }
 

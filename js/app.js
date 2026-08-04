@@ -89,6 +89,7 @@ const { hexToRgba, readColors } = window.BioCommandShared.colors;
 const { escapeHtml } = window.BioCommandShared.sanitize;
 const { initOverlayFocusManagement } = window.BioCommandShared.focusTrap;
 const { createScoreRing } = window.BioCommandShared.scoreRing;
+const { wireStepper } = window.BioCommandShared.stepper;
 const { showToast } = window.BioCommandShared.toast;
 const { createAdvisor, createBrowserAnthropicTransport, appendToken } = window.BioCommandShared.aiStream;
 
@@ -281,6 +282,9 @@ const trainingModule = window.BioCommandTraining.createTrainingModule({
   computeScores,
   renderCommand,
   escapeHtml,
+  wireStepper,
+  createScoreRing,
+  hexToRgba,
   getDB: () => DB,
   getColors: () => COLORS
 });

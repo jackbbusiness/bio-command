@@ -16,12 +16,23 @@
  * - escapeHtml() — js/modules/shared/sanitize.js; run over workout/
  *   exercise names before they're interpolated into a rendered HTML
  *   string (they can come from import, not just the builder form).
+ * - wireStepper() — js/modules/shared/stepper.js; used for set-row
+ *   load/reps and the builder's Sets/Rep/RPE/Rest/Load-step fields.
+ * - createScoreRing() / hexToRgba() — the rest timer's countdown ring.
  */
 (function (global) {
-  function createTrainingModule({ dayKey, saveDB, genId, armDangerButton, computeScores, renderCommand, escapeHtml, getDB, getColors }) {
+  function createTrainingModule({ dayKey, saveDB, genId, armDangerButton, computeScores, renderCommand, escapeHtml, wireStepper, createScoreRing, hexToRgba, getDB, getColors }) {
     let builderExercises = [];
     let builderEditId = null;
-    let exec = null; // { workout, startedAt, exSets: {exId: [{loadKg,reps,rpe,completed,completedAt}]}, restHandle, elapsedHandle }
+    let exec = null; // { workout, startedAt, exSets: {exId: [{loadKg,reps,rpe,completed,completedAt}]}, restHandle, elapsedHandle, restRemaining, restTotal }
+    const restRing = createScoreRing({ radius: 60, hexToRgba });
+    document.getElementById("rest-ring-hook").insertAdjacentHTML("afterbegin", restRing.markup());
+
+    const RPE_OPTIONS = [6, 7, 8, 9, 10];
+
+    function wireSteppersIn(container) {
+      container.querySelectorAll(".stepper").forEach((el) => { if (!el.dataset.wired) { wireStepper(el); el.dataset.wired = "1"; } });
+    }
 
     function seedDefaultWorkouts() {
       const DB = getDB();
@@ -118,22 +129,47 @@
 
     /* ---------- Builder ---------- */
 
+    function exStepperField(label, field, idx, value, min, max, step) {
+      return '<div class="stepper-field">' +
+        '<label class="ex-field-lbl">' + label + '</label>' +
+        '<div class="stepper" data-min="' + min + '" data-max="' + max + '" data-step="' + step + '">' +
+          '<button type="button" class="stepper-btn" data-dir="-1">&minus;</button>' +
+          '<input class="stepper-value" type="number" inputmode="decimal" data-field="' + field + '" data-idx="' + idx + '" value="' + (value ?? "") + '">' +
+          '<button type="button" class="stepper-btn" data-dir="1">+</button>' +
+        '</div></div>';
+    }
+
     function renderExRows() {
       const host = document.getElementById("ex-rows");
       host.innerHTML = builderExercises.map((e, i) =>
         '<div class="ex-row" data-idx="' + i + '">' +
         '<button class="ex-remove" data-remove="' + i + '">&times;</button>' +
-        '<input class="tac-input" data-field="name" data-idx="' + i + '" placeholder="Exercise name" value="' +
-          escapeHtml(e.name || "") + '">' +
+        '<input class="tac-input" data-field="name" data-idx="' + i + '" list="exercise-names-list" ' +
+          'placeholder="Exercise name" value="' + escapeHtml(e.name || "") + '">' +
         '<div class="ex-row-grid">' +
-        '<div><label class="ex-field-lbl">Sets</label><input class="tac-input" type="number" min="1" step="1" data-field="targetSets" data-idx="' + i + '" value="' + (e.targetSets ?? "") + '"></div>' +
-        '<div><label class="ex-field-lbl">Rep low</label><input class="tac-input" type="number" min="1" step="1" data-field="repLow" data-idx="' + i + '" value="' + (e.repLow ?? "") + '"></div>' +
-        '<div><label class="ex-field-lbl">Rep high</label><input class="tac-input" type="number" min="1" step="1" data-field="repHigh" data-idx="' + i + '" value="' + (e.repHigh ?? "") + '"></div>' +
-        '<div><label class="ex-field-lbl">Target RPE</label><input class="tac-input" type="number" min="1" max="10" step="0.5" data-field="targetRPE" data-idx="' + i + '" value="' + (e.targetRPE ?? "") + '"></div>' +
-        '<div><label class="ex-field-lbl">Rest sec</label><input class="tac-input" type="number" min="0" step="15" data-field="restSec" data-idx="' + i + '" value="' + (e.restSec ?? "") + '"></div>' +
-        '<div><label class="ex-field-lbl">Load step kg</label><input class="tac-input" type="number" min="0" step="0.25" data-field="loadIncrementKg" data-idx="' + i + '" value="' + (e.loadIncrementKg ?? "") + '"></div>' +
+        exStepperField("Sets", "targetSets", i, e.targetSets, 1, 10, 1) +
+        exStepperField("Rep low", "repLow", i, e.repLow, 1, 30, 1) +
+        exStepperField("Rep high", "repHigh", i, e.repHigh, 1, 30, 1) +
+        exStepperField("Target RPE", "targetRPE", i, e.targetRPE, 1, 10, 0.5) +
+        exStepperField("Rest sec", "restSec", i, e.restSec, 0, 600, 15) +
+        exStepperField("Load step kg", "loadIncrementKg", i, e.loadIncrementKg, 0, 20, 0.25) +
         '</div></div>'
       ).join("");
+      wireSteppersIn(host);
+    }
+
+    function populateExerciseDatalist() {
+      const DB = getDB();
+      const names = new Set();
+      DB.workouts.forEach(w => w.exercises.forEach(e => { if (e.name) names.add(e.name); }));
+      const list = document.getElementById("exercise-names-list");
+      if (!list) return;
+      list.innerHTML = "";
+      Array.from(names).sort().forEach(name => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        list.appendChild(opt);
+      });
     }
 
     function openBuilder(workoutId) {
@@ -155,6 +191,7 @@
         delBtn.style.display = "none";
       }
       document.getElementById("builder-status").textContent = "";
+      populateExerciseDatalist();
       renderExRows();
       document.getElementById("builder-overlay").classList.add("open");
     }
@@ -208,13 +245,39 @@
     }
 
     function setRowHtml(exId, idx, row, prevLabel) {
-      return '<div class="set-row' + (row.completed ? " done" : "") + '" data-exid="' + exId + '" data-setidx="' + idx + '">' +
-        '<span class="sc-num">' + (idx + 1) + '</span>' +
-        '<span class="sc-prev">' + prevLabel + '</span>' +
-        '<input class="sc-input sc-load" type="number" inputmode="decimal" step="0.5" value="' + (row.loadKg ?? "") + '"' + (row.completed ? " disabled" : "") + '>' +
-        '<input class="sc-input sc-reps" type="number" inputmode="numeric" step="1" value="' + (row.reps ?? "") + '"' + (row.completed ? " disabled" : "") + '>' +
-        '<input class="sc-input sc-rpe" type="number" inputmode="decimal" min="1" max="10" step="0.5" value="' + (row.rpe ?? "") + '"' + (row.completed ? " disabled" : "") + '>' +
-        '<button class="sc-check" data-check>' + (row.completed ? "&#10003;" : "") + '</button>' +
+      const dis = row.completed ? " disabled" : "";
+      const rpeChips = RPE_OPTIONS.map(v =>
+        '<button type="button" class="chip' + (row.rpe === v ? " selected" : "") + '" data-rpe="' + v + '"' + dis + '>' + v + '</button>'
+      ).join("");
+      return '<div class="set-row-card' + (row.completed ? " done" : "") + '" data-exid="' + exId + '" data-setidx="' + idx + '">' +
+        '<div class="src-top">' +
+          '<span class="sc-num">SET ' + (idx + 1) + '</span>' +
+          '<span class="sc-prev">' + prevLabel + '</span>' +
+          '<span class="spacer"></span>' +
+          '<button class="sc-check" data-check>' + (row.completed ? "&#10003;" : "") + '</button>' +
+        '</div>' +
+        '<div class="src-steppers">' +
+          '<div class="stepper-field">' +
+            '<label class="ex-field-lbl">KG</label>' +
+            '<div class="stepper" data-min="0" data-max="500" data-step="2.5">' +
+              '<button type="button" class="stepper-btn" data-dir="-1"' + dis + '>&minus;</button>' +
+              '<input class="stepper-value sc-load" type="number" inputmode="decimal" value="' + (row.loadKg ?? "") + '"' + dis + '>' +
+              '<button type="button" class="stepper-btn" data-dir="1"' + dis + '>+</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="stepper-field">' +
+            '<label class="ex-field-lbl">REPS</label>' +
+            '<div class="stepper" data-min="0" data-max="100" data-step="1">' +
+              '<button type="button" class="stepper-btn" data-dir="-1"' + dis + '>&minus;</button>' +
+              '<input class="stepper-value sc-reps" type="number" inputmode="numeric" value="' + (row.reps ?? "") + '"' + dis + '>' +
+              '<button type="button" class="stepper-btn" data-dir="1"' + dis + '>+</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="src-rpe">' +
+          '<label class="ex-field-lbl">RPE</label>' +
+          '<div class="chip-row sc-rpe-chips">' + rpeChips + '</div>' +
+        '</div>' +
         '</div>';
     }
 
@@ -236,11 +299,11 @@
           '<span class="exec-ex-sub">' + e.targetSets + "x" + e.repLow + "-" + e.repHigh +
           (e.targetRPE ? " @ RPE " + e.targetRPE : "") + " &middot; rest " + e.restSec + "s</span>" +
           '</div>' +
-          '<div class="set-row set-row-head"><span>SET</span><span>PREV</span><span>KG</span><span>REPS</span><span>RPE</span><span></span></div>' +
           '<div class="set-rows" data-exrows="' + e.id + '">' + rowsHtml + '</div>' +
           '<button class="add-set-btn" data-add="' + e.id + '">+ ADD SET</button>' +
           '</div>';
       }).join("");
+      wireSteppersIn(host);
       updateExecStats();
     }
 
@@ -270,42 +333,63 @@
         }
         exSets[e.id] = rows;
       });
-      exec = { workout: w, startedAt: Date.now(), exSets, restHandle: null, elapsedHandle: null };
+      exec = { workout: w, startedAt: Date.now(), exSets, restHandle: null, elapsedHandle: null, restRemaining: null, restTotal: null };
       document.getElementById("exec-workout-name").textContent = w.name.toUpperCase();
       document.getElementById("exec-done-screen").style.display = "none";
       document.getElementById("exec-exercise-list").style.display = "block";
-      document.getElementById("exec-restbar").style.display = "none";
+      document.getElementById("rest-sheet-overlay").classList.remove("open");
       document.getElementById("exec-overlay").classList.add("open");
       renderExecBody();
       clearInterval(exec.elapsedHandle);
       exec.elapsedHandle = setInterval(updateExecStats, 1000);
     }
 
+    // Rest timer: a bottom sheet (reuses the Phase 2A focus-trap for
+    // free -- it's still just `.overlay.open`) with a countdown ring
+    // instead of the old fixed bottom bar. remaining/total live on
+    // `exec` so the -15s/+15s buttons (wired once in init(), not
+    // per-rest-period) can reach the in-flight countdown.
+    function updateRestDisplay() {
+      const m = Math.floor(exec.restRemaining / 60), sec = exec.restRemaining % 60;
+      document.getElementById("rest-time").textContent = m + ":" + String(sec).padStart(2, "0");
+      restRing.setProgress(exec.restTotal > 0 ? exec.restRemaining / exec.restTotal : 0, getColors().cyan);
+    }
+
     function startFloatingRest(seconds) {
       clearInterval(exec.restHandle);
-      let remaining = seconds;
-      const bar = document.getElementById("exec-restbar");
-      const timeEl = document.getElementById("rb-time");
-      bar.style.display = "flex";
-      const m0 = Math.floor(remaining / 60), s0 = remaining % 60;
-      timeEl.textContent = m0 + ":" + String(s0).padStart(2, "0");
+      exec.restTotal = seconds;
+      exec.restRemaining = seconds;
+      document.getElementById("rest-sheet-overlay").classList.add("open");
+      updateRestDisplay();
       exec.restHandle = setInterval(() => {
-        remaining--;
-        if (remaining <= 0) {
+        exec.restRemaining--;
+        if (exec.restRemaining <= 0) {
           clearInterval(exec.restHandle);
-          bar.style.display = "none";
+          document.getElementById("rest-sheet-overlay").classList.remove("open");
           return;
         }
-        const m = Math.floor(remaining / 60), sec = remaining % 60;
-        timeEl.textContent = m + ":" + String(sec).padStart(2, "0");
+        updateRestDisplay();
       }, 1000);
+    }
+
+    function adjustRest(deltaSec) {
+      if (!exec || exec.restRemaining == null) return;
+      exec.restRemaining = Math.max(1, exec.restRemaining + deltaSec);
+      if (exec.restRemaining > exec.restTotal) exec.restTotal = exec.restRemaining;
+      updateRestDisplay();
+    }
+
+    function skipRest() {
+      if (!exec) return;
+      clearInterval(exec.restHandle);
+      document.getElementById("rest-sheet-overlay").classList.remove("open");
     }
 
     function finishSession() {
       const DB = getDB();
       clearInterval(exec.restHandle);
       clearInterval(exec.elapsedHandle);
-      document.getElementById("exec-restbar").style.display = "none";
+      document.getElementById("rest-sheet-overlay").classList.remove("open");
 
       const durationMin = Math.max(1, Math.round((Date.now() - exec.startedAt) / 60000));
       const sets = [];
@@ -456,16 +540,24 @@
       });
 
       document.getElementById("exec-exercise-list").addEventListener("input", (ev) => {
-        const row = ev.target.closest(".set-row");
+        const row = ev.target.closest(".set-row-card");
         if (!row) return;
         const exId = row.dataset.exid, idx = Number(row.dataset.setidx);
         const state = exec.exSets[exId][idx];
         if (ev.target.classList.contains("sc-load")) state.loadKg = ev.target.value === "" ? null : Number(ev.target.value);
         if (ev.target.classList.contains("sc-reps")) state.reps = ev.target.value === "" ? null : Number(ev.target.value);
-        if (ev.target.classList.contains("sc-rpe")) state.rpe = ev.target.value === "" ? null : Number(ev.target.value);
       });
 
       document.getElementById("exec-exercise-list").addEventListener("click", (ev) => {
+        const rpeChip = ev.target.closest(".sc-rpe-chips .chip");
+        if (rpeChip) {
+          const row = rpeChip.closest(".set-row-card");
+          const exId = row.dataset.exid, idx = Number(row.dataset.setidx);
+          exec.exSets[exId][idx].rpe = Number(rpeChip.dataset.rpe);
+          rpeChip.parentElement.querySelectorAll(".chip").forEach(c => c.classList.toggle("selected", c === rpeChip));
+          return;
+        }
+
         const addId = ev.target.dataset.add;
         if (addId) {
           const rows = exec.exSets[addId];
@@ -476,10 +568,11 @@
           const idx = rows.length - 1;
           const prevLabel = (last && last.sets[idx]) ? last.sets[idx].loadKg + "x" + last.sets[idx].reps : "--";
           container.insertAdjacentHTML("beforeend", setRowHtml(addId, idx, rows[idx], prevLabel));
+          wireSteppersIn(container.lastElementChild);
           return;
         }
         if (ev.target.hasAttribute("data-check")) {
-          const row = ev.target.closest(".set-row");
+          const row = ev.target.closest(".set-row-card");
           const exId = row.dataset.exid, idx = Number(row.dataset.setidx);
           const state = exec.exSets[exId][idx];
           state.completed = !state.completed;
@@ -487,14 +580,14 @@
             state.completedAt = new Date().toISOString();
             row.classList.add("done");
             ev.target.innerHTML = "&#10003;";
-            row.querySelectorAll(".sc-input").forEach(el => el.disabled = true);
+            row.querySelectorAll(".stepper-btn, .stepper-value, .sc-rpe-chips .chip").forEach(el => el.disabled = true);
             const ex = findExercise(exId);
             if (ex && ex.restSec > 0) startFloatingRest(ex.restSec);
           } else {
             state.completedAt = null;
             row.classList.remove("done");
             ev.target.innerHTML = "";
-            row.querySelectorAll(".sc-input").forEach(el => el.disabled = false);
+            row.querySelectorAll(".stepper-btn, .stepper-value, .sc-rpe-chips .chip").forEach(el => el.disabled = false);
           }
           updateExecStats();
         }
@@ -516,6 +609,10 @@
       document.getElementById("btn-close-exec").addEventListener("click", () => {
         document.getElementById("exec-overlay").classList.remove("open");
       });
+
+      document.getElementById("btn-rest-minus").addEventListener("click", () => adjustRest(-15));
+      document.getElementById("btn-rest-plus").addEventListener("click", () => adjustRest(15));
+      document.getElementById("btn-skip-rest").addEventListener("click", skipRest);
     }
 
     function render() {

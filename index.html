@@ -14,7 +14,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.openfoodfacts.org; media-src 'self' blob:; font-src 'self'; connect-src 'self' https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <script src="js/vendor/supabase.min.js?v=2.112.0"></script>
 <script src="js/theme-boot.js?v=2.3.0"></script>
-<link rel="stylesheet" href="css/app.css?v=2.4.0">
+<link rel="stylesheet" href="css/app.css?v=2.5.0">
 <link rel="stylesheet" href="css/intelligence.css?v=2.3.1">
 <link rel="stylesheet" href="css/history.css?v=2.3.1">
 </head>
@@ -644,6 +644,8 @@
   </div>
 </div>
 
+<datalist id="exercise-names-list"></datalist>
+
 <div class="overlay" id="builder-overlay">
   <div class="overlay-inner">
     <div class="card-head" style="margin-bottom:16px;">
@@ -697,10 +699,22 @@
     </div>
   </div>
 
-  <div class="exec-restbar" id="exec-restbar" style="display:none;">
-    <span class="rb-label">RESTING</span>
-    <span class="rb-time" id="rb-time">0:00</span>
-    <button class="tac-btn" id="btn-skip-rest" style="min-height:32px; padding:6px 14px;">Skip</button>
+</div>
+
+<div class="overlay sheet" id="rest-sheet-overlay">
+  <div class="sheet-inner" style="text-align:center;">
+    <div class="sheet-handle"></div>
+    <div class="hud-label" style="margin-bottom:14px;">RESTING</div>
+    <div class="ring-wrap" id="rest-ring-hook" style="--ring-size:140px; margin:0 auto 18px;">
+      <div class="ring-center">
+        <span class="hero-score" id="rest-time" style="font-size:32px;">0:00</span>
+      </div>
+    </div>
+    <div class="btn-row" style="justify-content:center;">
+      <button class="tac-btn" id="btn-rest-minus" style="flex:1;">&minus;15s</button>
+      <button class="tac-btn primary" id="btn-skip-rest" style="flex:1;">Skip</button>
+      <button class="tac-btn" id="btn-rest-plus" style="flex:1;">+15s</button>
+    </div>
   </div>
 </div>
 
@@ -1031,13 +1045,13 @@
 <script src="js/modules/shared/scoring.js?v=2.2.2"></script>
 <script src="js/modules/shared/sanitize.js?v=2.2.2"></script>
 <script src="js/modules/shared/focus-trap.js?v=2.3.2"></script>
-<script src="js/modules/shared/stepper.js?v=2.3.3"></script>
+<script src="js/modules/shared/stepper.js?v=2.5.0"></script>
 <script src="js/modules/shared/score-ring.js?v=2.3.3"></script>
 <script src="js/modules/shared/toast.js?v=2.3.3"></script>
 <script src="js/modules/shared/ai-stream.js?v=2.3.3"></script>
 <script src="js/modules/history/index.js?v=2.2.2"></script>
 <script src="js/modules/fuel/index.js?v=2.2.2"></script>
-<script src="js/modules/training/index.js?v=2.4.0"></script>
+<script src="js/modules/training/index.js?v=2.5.0"></script>
 <script src="js/modules/journal/index.js?v=2.2.2"></script>
 <script src="js/modules/biomarkers/index.js?v=2.2.2"></script>
 <script src="js/modules/protocols/index.js?v=2.2.2"></script>
@@ -1046,7 +1060,7 @@
 <script src="js/modules/data-management/index.js?v=2.2.2"></script>
 <script src="js/modules/sync/index.js?v=2.4.0"></script>
 <script src="js/modules/notifications/index.js?v=2.2.2"></script>
-<script src="js/app.js?v=2.4.0"></script>
+<script src="js/app.js?v=2.5.0"></script>
 <script src="js/intelligence.js?v=2.2.2"></script>
 <script src="js/history.js?v=2.2.2"></script>
 </body>
