@@ -563,102 +563,30 @@ document.getElementById("btn-save-ai").addEventListener("click", () => {
 })();
 
 /* ============================================================
-   DATA CARD (SYS): store status, export / import / wipe
+   DATA MANAGEMENT (extracted into js/modules/data-management/index.js)
    ============================================================ */
 
+const dataManagementModule = window.BioCommandDataManagement.createDataManagementModule({
+  Storage,
+  DB_KEY,
+  emptyDB,
+  dayKey,
+  saveDB,
+  armDangerButton,
+  renderCommand,
+  getDB: () => DB,
+  setDB: (newDB) => { DB = newDB; },
+  getColors: () => COLORS
+});
+dataManagementModule.init();
+
 function renderDataCard() {
-  document.getElementById("store-desc").textContent = Storage.persistent
-    ? "Persistent local store active. Export regularly as backup."
-    : "Volatile store (sandboxed preview). Data clears on reload. Open in Safari or host to persist.";
-  const bytes = (Storage.get(DB_KEY) || "").length;
-  document.getElementById("db-size").textContent = "DB " + bytes + " B";
+  dataManagementModule.render();
 }
-
-document.getElementById("btn-export").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify(DB, null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "biocommand-backup-" + dayKey() + ".json";
-  a.click();
-  URL.revokeObjectURL(a.href);
-});
-
-document.getElementById("btn-import").addEventListener("click", () => {
-  document.getElementById("import-file").click();
-});
-
-document.getElementById("import-file").addEventListener("change", (ev) => {
-  const file = ev.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const incoming = JSON.parse(reader.result);
-      if (!incoming || incoming.version !== 1) {
-        document.getElementById("import-status").textContent = "Import rejected: unsupported DB version.";
-        document.getElementById("import-status").style.color = COLORS.red;
-        return;
-      }
-      incoming.briefings = incoming.briefings || {};
-      incoming.workouts = incoming.workouts || [];
-      incoming.sessions = incoming.sessions || [];
-      DB = incoming;
-      saveDB(DB);
-      renderCommand();
-      document.getElementById("import-status").textContent = "Import successful.";
-      document.getElementById("import-status").style.color = COLORS.green;
-    } catch (e) {
-      document.getElementById("import-status").textContent = "Import rejected: file is not valid Bio-Command JSON.";
-      document.getElementById("import-status").style.color = COLORS.red;
-    }
-  };
-  reader.readAsText(file);
-  ev.target.value = "";
-});
-
-document.getElementById("btn-wipe").addEventListener("click", (ev) => {
-  armDangerButton(ev.currentTarget, "Wipe", () => {
-    Storage.remove(DB_KEY);
-    DB = emptyDB();
-    saveDB(DB);
-    renderCommand();
-  });
-});
 
 /* ============================================================
    SHELL: tabs, SYS, header, theme
    ============================================================ */
-
-/* ============================================================
-   TRAIN MODULE
-   Templates (workouts) hold prescriptions; sessions are the
-   immutable execution log. Finishing a session writes duration
-   and average RPE straight into today's telemetry row, so
-   strain is computed from what you actually lifted rather than
-   a manual estimate.
-   ============================================================ */
-
-function armDangerButton(btn, actionLabel, doAction) {
-  if (btn.dataset.armed === "1") {
-    clearTimeout(Number(btn.dataset.armTimer));
-    btn.dataset.armed = "0";
-    btn.textContent = actionLabel;
-    doAction();
-    return;
-  }
-  btn.dataset.armed = "1";
-  const original = btn.textContent;
-  btn.textContent = "TAP AGAIN TO CONFIRM";
-  const t = setTimeout(() => {
-    btn.dataset.armed = "0";
-    btn.textContent = original;
-  }, 3500);
-  btn.dataset.armTimer = String(t);
-}
-
-function genId(prefix) {
-  return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-}
 
 /* ============================================================
    TRAIN MODULE (extracted into js/modules/training/index.js)

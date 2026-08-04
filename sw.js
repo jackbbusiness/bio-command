@@ -30,6 +30,7 @@ const SHELL_URLS = [
   APP_ROOT + "js/modules/protocols/index.js?v=2.2.2",
   APP_ROOT + "js/modules/dashboard/index.js?v=2.2.2",
   APP_ROOT + "js/modules/settings/index.js?v=2.2.2",
+  APP_ROOT + "js/modules/data-management/index.js?v=2.2.2",
   APP_ROOT + "js/app.js?v=2.2.2",
   APP_ROOT + "js/intelligence.js?v=2.2.2",
   APP_ROOT + "js/history.js?v=2.2.2"
