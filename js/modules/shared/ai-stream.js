@@ -10,12 +10,16 @@
  * no feature module changes.
  *
  * A transport is anything with an async generator `send({ system,
- * prompt, signal })` that yields text deltas. browserAnthropicTransport
- * is the only one that exists today.
+ * prompt, signal, model, maxTokens })` that yields text deltas.
+ * browserAnthropicTransport is the only one that exists today. model/
+ * maxTokens given to send() override the transport's own defaults for
+ * that one call (e.g. a quick JSON-extraction call wants a low token
+ * cap; a full week's meal plan needs a much higher one) -- consumers
+ * that don't care just get the transport-level default.
  */
 (function (global) {
-  function createBrowserAnthropicTransport({ getApiKey, model = "claude-sonnet-4-6", maxTokens = 700 } = {}) {
-    async function* send({ system, prompt, signal } = {}) {
+  function createBrowserAnthropicTransport({ getApiKey, model: defaultModel = "claude-sonnet-4-6", maxTokens: defaultMaxTokens = 700 } = {}) {
+    async function* send({ system, prompt, signal, model, maxTokens } = {}) {
       const key = getApiKey && getApiKey();
       if (!key) throw new Error("SET KEY IN SYS");
 
@@ -28,8 +32,8 @@
           "anthropic-dangerous-direct-browser-access": "true"
         },
         body: JSON.stringify({
-          model,
-          max_tokens: maxTokens,
+          model: model || defaultModel,
+          max_tokens: maxTokens || defaultMaxTokens,
           system,
           messages: [{ role: "user", content: prompt }],
           stream: true
@@ -73,10 +77,10 @@
   }
 
   function createAdvisor({ transport }) {
-    async function ask(prompt, { system, onToken, onDone, onError, signal } = {}) {
+    async function ask(prompt, { system, onToken, onDone, onError, signal, model, maxTokens } = {}) {
       let full = "";
       try {
-        for await (const delta of transport.send({ system, prompt, signal })) {
+        for await (const delta of transport.send({ system, prompt, signal, model, maxTokens })) {
           full += delta;
           if (typeof onToken === "function") onToken(delta, full);
         }

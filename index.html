@@ -14,7 +14,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.openfoodfacts.org; media-src 'self' blob:; font-src 'self'; connect-src 'self' https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <script src="js/vendor/supabase.min.js?v=2.112.0"></script>
 <script src="js/theme-boot.js?v=2.3.0"></script>
-<link rel="stylesheet" href="css/app.css?v=2.5.0">
+<link rel="stylesheet" href="css/app.css?v=2.6.0">
 <link rel="stylesheet" href="css/intelligence.css?v=2.3.1">
 <link rel="stylesheet" href="css/history.css?v=2.3.1">
 </head>
@@ -258,30 +258,37 @@
         <span class="hud-label">Today</span>
         <span class="spacer"></span>
         <span class="telemetry cap t3" id="fuel-adjust-note"></span>
-        <button class="tac-btn" id="btn-fuel-goal" style="min-height:30px; padding:5px 11px; margin-left:8px;" title="Set goal and edit plan">Goal</button>
+        <button class="tac-btn" id="btn-fuel-goal" style="min-height:30px; padding:5px 11px; margin-left:8px;" title="Auto-compute plan from goal">Goal</button>
+        <button class="btn-icon" id="btn-edit-fuel-plan" type="button" style="width:34px; height:34px;" aria-label="Edit fuel plan manually" title="Edit plan manually">
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#icon-edit"></use></svg>
+        </button>
       </div>
       <div class="macro-ring-row" id="fuel-macro-tiles"></div>
     </div>
 
-    <!-- AI Quick Log (Cal AI style text input) -->
+    <!-- Log a meal: barcode is the fastest/most accurate path, so it's
+         primary; recent repeats are one tap; AI free-text description
+         is the flexible fallback for anything not packaged/repeated. -->
     <div class="hud-card span-2">
       <div class="card-head">
         <span class="status-dot" style="color:var(--green)"></span>
-        <span class="hud-label">Quick Log</span>
-        <span class="spacer"></span>
-        <span class="telemetry cap t3">DESCRIBE YOUR MEAL</span>
+        <span class="hud-label">Log a Meal</span>
       </div>
-      <div class="telemetry cap t3" style="margin-bottom:8px;">Type anything. "Big Mac and fries", "steak, chips and salad restaurant portion", "protein shake 30g whey with oat milk".</div>
+      <button class="tac-btn primary fuel-scan-btn" id="btn-barcode-scan" type="button" style="width:100%;">
+        <svg class="icon" aria-hidden="true"><use href="#icon-barcode"></use></svg> Scan barcode
+      </button>
+      <div class="telemetry cap t3" style="margin-top:8px;">PACKAGED FOOD &middot; OPEN FOOD FACTS</div>
+
+      <div id="fuel-recent-wrap" hidden style="margin-top:14px;">
+        <div class="telemetry cap t3" style="margin-bottom:6px;">RECENT &middot; TAP TO REPEAT</div>
+        <div class="chip-row" id="fuel-recent-chips"></div>
+      </div>
+
+      <div class="telemetry cap t3" style="margin-top:16px; margin-bottom:8px;">Or describe what you ate. "Big Mac and fries", "steak, chips and salad restaurant portion", "protein shake 30g whey with oat milk".</div>
       <div class="log-input-row">
         <input class="tac-input" id="fuel-log-input" type="text" placeholder="What did you eat?"
                autocapitalize="off" autocorrect="off" style="font-size:14px;">
-        <button class="tac-btn primary" id="btn-fuel-log">Log</button>
-      </div>
-      <div class="fuel-scan-row">
-        <button class="tac-btn fuel-scan-btn" id="btn-barcode-scan" type="button">
-          <span class="barcode-icon" aria-hidden="true"></span> Scan barcode
-        </button>
-        <span class="telemetry cap t3">PACKAGED FOOD · OPEN FOOD FACTS</span>
+        <button class="tac-btn" id="btn-fuel-log">AI</button>
       </div>
       <div class="telemetry cap t3" id="fuel-log-status" style="margin-top:6px;"></div>
     </div>
@@ -727,21 +734,21 @@
       <button class="tac-btn" id="btn-cancel-fuel-plan" style="min-height:36px; padding:7px 14px;">Cancel</button>
     </div>
     <div class="form-grid">
-      <div>
-        <label class="hud-label field-lbl" for="fp-kcal">Base kcal</label>
-        <input class="tac-input" id="fp-kcal" type="number" inputmode="numeric" min="1000" step="50">
+      <div class="full">
+        <label class="hud-label field-lbl" for="fp-kcal">Base kcal <span class="slider-val" id="fp-kcal-val"></span></label>
+        <input class="tac-range" id="fp-kcal" type="range" min="1000" max="5000" step="50">
       </div>
-      <div>
-        <label class="hud-label field-lbl" for="fp-protein">Protein g</label>
-        <input class="tac-input" id="fp-protein" type="number" inputmode="numeric" min="0" step="5">
+      <div class="full">
+        <label class="hud-label field-lbl" for="fp-protein">Protein g <span class="slider-val" id="fp-protein-val"></span></label>
+        <input class="tac-range" id="fp-protein" type="range" min="0" max="400" step="5">
       </div>
-      <div>
-        <label class="hud-label field-lbl" for="fp-carb">Carb g</label>
-        <input class="tac-input" id="fp-carb" type="number" inputmode="numeric" min="0" step="5">
+      <div class="full">
+        <label class="hud-label field-lbl" for="fp-carb">Carb g <span class="slider-val" id="fp-carb-val"></span></label>
+        <input class="tac-range" id="fp-carb" type="range" min="0" max="600" step="5">
       </div>
-      <div>
-        <label class="hud-label field-lbl" for="fp-fat">Fat g</label>
-        <input class="tac-input" id="fp-fat" type="number" inputmode="numeric" min="0" step="5">
+      <div class="full">
+        <label class="hud-label field-lbl" for="fp-fat">Fat g <span class="slider-val" id="fp-fat-val"></span></label>
+        <input class="tac-range" id="fp-fat" type="range" min="0" max="200" step="5">
       </div>
       <div class="full" style="display:flex; align-items:center; gap:10px; margin-top:4px;">
         <input type="checkbox" id="fp-dynamic" style="width:20px; height:20px;">
@@ -792,8 +799,17 @@
         <input class="tac-input" id="ml-fat" type="number" inputmode="numeric" min="0" step="1">
       </div>
       <div class="full">
-        <label class="hud-label field-lbl" for="ml-ingredients">Ingredients (one per line, feeds the shopping manifest)</label>
-        <textarea class="tac-input" id="ml-ingredients" rows="4" style="min-height:90px; text-align:left; font-size:13px; resize:vertical;" placeholder="200g chicken breast&#10;150g rice&#10;handful spinach"></textarea>
+        <label class="hud-label field-lbl">Preview</label>
+        <div class="macro-ring-row" id="ml-macro-preview"></div>
+      </div>
+      <div class="full">
+        <label class="hud-label field-lbl">Ingredients (feeds the shopping manifest)</label>
+        <div class="chip-row" id="ml-ingredient-chips"></div>
+        <div class="log-input-row" style="margin-top:8px;">
+          <input class="tac-input" id="ml-ingredient-input" type="text" placeholder="Add an ingredient, then Enter" style="font-size:13px;">
+          <button class="tac-btn" id="btn-add-ingredient" type="button">Add</button>
+        </div>
+        <textarea id="ml-ingredients" hidden></textarea>
       </div>
       <div class="full telemetry cap t3" id="meal-builder-status"></div>
       <div class="full btn-row" style="margin-top:6px;">
@@ -1048,9 +1064,9 @@
 <script src="js/modules/shared/stepper.js?v=2.5.0"></script>
 <script src="js/modules/shared/score-ring.js?v=2.3.3"></script>
 <script src="js/modules/shared/toast.js?v=2.3.3"></script>
-<script src="js/modules/shared/ai-stream.js?v=2.3.3"></script>
+<script src="js/modules/shared/ai-stream.js?v=2.6.0"></script>
 <script src="js/modules/history/index.js?v=2.2.2"></script>
-<script src="js/modules/fuel/index.js?v=2.2.2"></script>
+<script src="js/modules/fuel/index.js?v=2.6.0"></script>
 <script src="js/modules/training/index.js?v=2.5.0"></script>
 <script src="js/modules/journal/index.js?v=2.2.2"></script>
 <script src="js/modules/biomarkers/index.js?v=2.2.2"></script>
@@ -1060,7 +1076,7 @@
 <script src="js/modules/data-management/index.js?v=2.2.2"></script>
 <script src="js/modules/sync/index.js?v=2.4.0"></script>
 <script src="js/modules/notifications/index.js?v=2.2.2"></script>
-<script src="js/app.js?v=2.5.0"></script>
+<script src="js/app.js?v=2.6.0"></script>
 <script src="js/intelligence.js?v=2.2.2"></script>
 <script src="js/history.js?v=2.2.2"></script>
 </body>

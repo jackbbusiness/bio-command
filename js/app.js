@@ -299,9 +299,10 @@ const fuelModule = window.BioCommandFuel.createFuelModule({
   saveDB,
   genId,
   baselineFor,
-  loadAI: settingsModule.loadAI,
   armDangerButton,
   escapeHtml,
+  advisor,
+  appendToken,
   getDB: () => DB,
   getColors: () => COLORS
 });

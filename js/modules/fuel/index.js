@@ -6,7 +6,6 @@
  * - saveDB()
  * - genId()
  * - baselineFor()
- * - loadAI()
  * - armDangerButton()
  * - getDB() / getColors() — accessors rather than plain values, since
  *   DB and COLORS are both reassigned at runtime (import/reset/cloud
@@ -16,10 +15,19 @@
  *   template names and AI-generated text before interpolating them
  *   into a rendered HTML string (meal names can come from a barcode
  *   lookup or the AI quick-log response, not just typed input).
+ * - advisor / appendToken — js/modules/shared/ai-stream.js. advisor is
+ *   the one shared createAdvisor({transport}) instance (dashboard uses
+ *   the same one) so this module never talks to Anthropic directly;
+ *   appendToken is the innerHTML-free token renderer, used for the
+ *   meal planner's staged reveal. Quick-log's JSON response isn't
+ *   streamed to the UI (a partial JSON blob has nothing useful to show
+ *   mid-flight) but still goes through advisor.ask() for the same
+ *   one-transport guarantee.
  */
 (function (global) {
-  function createFuelModule({ dayKey, saveDB, genId, baselineFor, loadAI, armDangerButton, escapeHtml, getDB, getColors }) {
+  function createFuelModule({ dayKey, saveDB, genId, baselineFor, armDangerButton, escapeHtml, advisor, appendToken, getDB, getColors }) {
     const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
+    let builderIngredients = [];
 
     /* Evidence-based macro formulas per goal (research: 2.2g/kg protein for fat loss,
        1.8g/kg for muscle gain, all from meta-analyses cited in research pass). */
@@ -146,6 +154,33 @@
       }, { kcal: 0, proteinG: 0, carbG: 0, fatG: 0 });
     }
 
+    // Most-recent distinct meal names (any day), for one-tap repeat
+    // logging -- no AI call, just replays the stored macros.
+    function recentUniqueLogs(limit) {
+      const DB = getDB();
+      const log = DB.fuelLog || [];
+      const seen = new Map();
+      for (let i = log.length - 1; i >= 0 && seen.size < limit; i--) {
+        const m = log[i];
+        if (!m.name || seen.has(m.name)) continue;
+        seen.set(m.name, m);
+      }
+      return Array.from(seen.values());
+    }
+
+    function renderRecentLogChips() {
+      const wrap = document.getElementById("fuel-recent-wrap");
+      const host = document.getElementById("fuel-recent-chips");
+      if (!wrap || !host) return;
+      const recents = recentUniqueLogs(6);
+      wrap.hidden = !recents.length;
+      if (!recents.length) return;
+      host._recents = recents;
+      host.innerHTML = recents.map((m, i) =>
+        '<button type="button" class="chip" data-recent-idx="' + i + '">' + escapeHtml(m.name) + '</button>'
+      ).join("");
+    }
+
     function renderFuelTab() {
       const DB = getDB();
       const COLORS = getColors();
@@ -172,6 +207,8 @@
             '</div>')
           .join("")
         : '<div class="empty-hint">Nothing logged yet. Describe what you ate above.</div>';
+
+      renderRecentLogChips();
     }
 
     /* ---------- AI Quick Log ---------- */
@@ -179,26 +216,14 @@
       const DB = getDB();
       const COLORS = getColors();
       const status = document.getElementById("fuel-log-status");
-      const cfg = loadAI();
-      if (!cfg || !cfg.key) { status.textContent = "Set your Anthropic API key in SYS first."; status.style.color = COLORS.red; return; }
-      const plan = getOrCreateFuelPlan();
       status.innerHTML = '<span class="ai-thinking">ANALYSING...</span>';
       try {
-        const res = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: { "x-api-key": cfg.key, "anthropic-version": "2023-06-01",
-            "content-type": "application/json", "anthropic-dangerous-direct-browser-access": "true" },
-          body: JSON.stringify({
-            model: "claude-sonnet-4-6", max_tokens: 200,
-            messages: [{ role: "user", content:
-              "Return ONLY valid JSON, no markdown, no explanation. User ate: \"" + description + "\". " +
-              "Estimate: { \"name\": \"<brief label>\", \"kcal\": N, \"proteinG\": N, \"carbG\": N, \"fatG\": N }. " +
-              "Use standard UK/restaurant portion sizes. Integers only." }]
-          })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error((data.error && data.error.message) || "HTTP " + res.status);
-        const raw = (data.content || []).map(b => b.text || "").join("").trim();
+        const raw = await advisor.ask(
+          "Return ONLY valid JSON, no markdown, no explanation. User ate: \"" + description + "\". " +
+          "Estimate: { \"name\": \"<brief label>\", \"kcal\": N, \"proteinG\": N, \"carbG\": N, \"fatG\": N }. " +
+          "Use standard UK/restaurant portion sizes. Integers only.",
+          { maxTokens: 200 }
+        );
         const obj = JSON.parse(raw.replace(/```json|```/g, "").trim());
         DB.fuelLog = DB.fuelLog || [];
         DB.fuelLog.push({ dayKey: dayKey(), ...obj });
@@ -208,7 +233,9 @@
         status.textContent = obj.name + " logged: " + obj.kcal + " kcal / " + obj.proteinG + "g protein";
         status.style.color = COLORS.green;
       } catch (e) {
-        status.textContent = "Could not parse: " + e.message;
+        status.textContent = e.message === "SET KEY IN SYS"
+          ? "Set your Anthropic API key in SYS first."
+          : "Could not parse: " + e.message;
         status.style.color = COLORS.red;
       }
     }
@@ -412,14 +439,18 @@
     async function genMealPlan() {
       const DB = getDB();
       const status = document.getElementById("meal-plan-out");
-      const cfg = loadAI();
-      if (!cfg || !cfg.key) { status.innerHTML = '<div class="empty-hint">Set Anthropic API key in SYS first.</div>'; return; }
       const massKg = DB.operator.targetBodyMassKg || 84;
       const goalLabel = GOAL_CONFIGS[currentGoal].label;
       const plan = getOrCreateFuelPlan();
       const prefs = document.getElementById("meal-plan-prefs").value.trim();
       const lastHrv = (Object.values(DB.telemetry).sort((a,b)=>b.dayKey.localeCompare(a.dayKey))[0] || {}).hrvMs;
-      status.innerHTML = '<div class="ai-thinking">GENERATING WEEK PLAN...</div>';
+      // Staged reveal into a plain-text scratch container while
+      // streaming (appendToken -- never innerHTML, same C1 guarantee
+      // as the Today advisor); once the full text is in, replace it
+      // with the nicely-formatted day-by-day structure below.
+      status.className = "brief-out show skeleton";
+      status.textContent = "";
+      let firstToken = true;
       try {
         const prompt = "Create a 7-day meal plan for a serious athlete. " +
           "Goal: " + goalLabel + ". Body mass: " + massKg + "kg. " +
@@ -430,16 +461,13 @@
           "Format: Monday through Sunday. For each day, list Breakfast, Lunch, Dinner, Snack on separate lines. " +
           "Include rough macros per meal. Keep meals practical, whole-food focused, high protein. " +
           "UK English. Plain text, no markdown headers or bullets.";
-        const res = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: { "x-api-key": cfg.key, "anthropic-version": "2023-06-01",
-            "content-type": "application/json", "anthropic-dangerous-direct-browser-access": "true" },
-          body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1200, messages: [{ role: "user", content: prompt }] })
+        const text = await advisor.ask(prompt, {
+          maxTokens: 1200,
+          onToken: (delta) => {
+            if (firstToken) { status.classList.remove("skeleton"); firstToken = false; }
+            appendToken(status, delta);
+          }
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error((data.error && data.error.message) || "HTTP " + res.status);
-        const text = (data.content || []).map(b => b.text || "").join("").trim();
-        // Store the plan
         const wk = weekStartKey();
         DB.fuelPlans[wk] = DB.fuelPlans[wk] || {};
         DB.fuelPlans[wk].aiPlanText = text;
@@ -447,13 +475,16 @@
         saveDB(DB);
         renderMealPlanOut(text, goalLabel);
       } catch (e) {
-        status.innerHTML = '<div class="empty-hint">Error: ' + escapeHtml(e.message) + '</div>';
+        status.className = "";
+        const msg = e.message === "SET KEY IN SYS" ? "Set Anthropic API key in SYS first." : e.message;
+        status.innerHTML = '<div class="empty-hint">Error: ' + escapeHtml(msg) + '</div>';
       }
     }
 
     function renderMealPlanOut(text, goal) {
       const host = document.getElementById("meal-plan-out");
-      if (!text) { host.innerHTML = ""; return; }
+      if (!text) { host.className = ""; host.innerHTML = ""; return; }
+      host.className = "brief-out show";
       const days = text.split(/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i).filter(Boolean);
       let html = '<div class="telemetry cap t3" style="margin-bottom:10px;">' + escapeHtml(goal || "") + ' PLAN</div>';
       for (let i = 0; i < days.length; i += 2) {
@@ -517,6 +548,45 @@
     }
 
     /* ---------- Meal template builder ---------- */
+    // Live macro-ring preview while typing in the builder -- reuses
+    // the same macroTileHtml() the Today tab uses, just against
+    // whatever's currently in the form rather than a target/consumed
+    // pair, so it shows the raw values with no band coloring.
+    function renderMealPreview() {
+      const host = document.getElementById("ml-macro-preview");
+      if (!host) return;
+      const num = (id) => Number(document.getElementById(id).value) || 0;
+      const COLORS = getColors();
+      host.innerHTML =
+        macroTileHtml("KCAL", num("ml-kcal"), num("ml-kcal") || 1, COLORS.cyan) +
+        macroTileHtml("PROTEIN", num("ml-protein"), num("ml-protein") || 1, COLORS.green) +
+        macroTileHtml("CARB", num("ml-carb"), num("ml-carb") || 1, COLORS.amber) +
+        macroTileHtml("FAT", num("ml-fat"), num("ml-fat") || 1, COLORS.red);
+    }
+
+    function syncIngredientsTextarea() {
+      document.getElementById("ml-ingredients").value = builderIngredients.join("\n");
+    }
+
+    function renderIngredientChips() {
+      const host = document.getElementById("ml-ingredient-chips");
+      if (!host) return;
+      host.innerHTML = builderIngredients.map((ing, i) =>
+        '<button type="button" class="chip selected" data-remove-ingredient="' + i + '">' +
+        escapeHtml(ing) + ' <svg class="icon icon-sm" aria-hidden="true"><use href="#icon-close"></use></svg></button>'
+      ).join("");
+    }
+
+    function addIngredientFromInput() {
+      const input = document.getElementById("ml-ingredient-input");
+      const v = input.value.trim();
+      if (!v) return;
+      builderIngredients.push(v);
+      input.value = "";
+      renderIngredientChips();
+      syncIngredientsTextarea();
+    }
+
     function openMealBuilder(id) {
       const DB = getDB();
       mealEditId = id;
@@ -530,7 +600,7 @@
         document.getElementById("ml-protein").value = t.proteinG;
         document.getElementById("ml-carb").value = t.carbG;
         document.getElementById("ml-fat").value = t.fatG;
-        document.getElementById("ml-ingredients").value = t.ingredientsText || "";
+        builderIngredients = (t.ingredientsText || "").split("\n").map(s => s.trim()).filter(Boolean);
         delBtn.style.display = "block";
       } else {
         document.getElementById("meal-builder-title").textContent = "New Template";
@@ -539,9 +609,13 @@
         document.getElementById("ml-protein").value = "";
         document.getElementById("ml-carb").value = "";
         document.getElementById("ml-fat").value = "";
-        document.getElementById("ml-ingredients").value = "";
+        builderIngredients = [];
         delBtn.style.display = "none";
       }
+      document.getElementById("ml-ingredient-input").value = "";
+      renderIngredientChips();
+      syncIngredientsTextarea();
+      renderMealPreview();
       document.getElementById("meal-builder-overlay").classList.add("open");
     }
 
@@ -562,6 +636,23 @@
         if (globalIdx != null) DB.fuelLog.splice(globalIdx, 1);
         saveDB(DB);
         renderFuelTab();
+      });
+
+      document.getElementById("fuel-recent-chips").addEventListener("click", (ev) => {
+        const btn = ev.target.closest("[data-recent-idx]");
+        if (!btn) return;
+        const host = document.getElementById("fuel-recent-chips");
+        const m = host._recents && host._recents[Number(btn.dataset.recentIdx)];
+        if (!m) return;
+        const DB = getDB();
+        const COLORS = getColors();
+        DB.fuelLog = DB.fuelLog || [];
+        DB.fuelLog.push({ dayKey: dayKey(), name: m.name, kcal: m.kcal, proteinG: m.proteinG, carbG: m.carbG, fatG: m.fatG, source: "repeat" });
+        saveDB(DB);
+        renderFuelTab();
+        const status = document.getElementById("fuel-log-status");
+        status.textContent = m.name + " logged: " + m.kcal + " kcal / " + m.proteinG + "g protein";
+        status.style.color = COLORS.green;
       });
 
       document.getElementById("btn-fuel-log").addEventListener("click", () => {
@@ -642,6 +733,15 @@
       });
 
       /* ---------- Fuel plan overlay ---------- */
+      function syncFuelSliderLabels() {
+        ["fp-kcal", "fp-protein", "fp-carb", "fp-fat"].forEach((id) => {
+          document.getElementById(id + "-val").textContent = document.getElementById(id).value;
+        });
+      }
+      ["fp-kcal", "fp-protein", "fp-carb", "fp-fat"].forEach((id) => {
+        document.getElementById(id).addEventListener("input", syncFuelSliderLabels);
+      });
+
       document.getElementById("btn-edit-fuel-plan") && document.getElementById("btn-edit-fuel-plan").addEventListener("click", () => {
         const plan = getOrCreateFuelPlan();
         document.getElementById("fp-kcal").value = plan.baseTargetKcal;
@@ -650,6 +750,7 @@
         document.getElementById("fp-fat").value = plan.fatG;
         document.getElementById("fp-dynamic").checked = plan.dynamicAdjustment;
         document.getElementById("fp-cap").value = plan.adjustmentCapPct;
+        syncFuelSliderLabels();
         document.getElementById("fuel-plan-overlay").classList.add("open");
       });
       document.getElementById("btn-cancel-fuel-plan").addEventListener("click", () => {
@@ -673,6 +774,21 @@
       document.getElementById("btn-new-meal").addEventListener("click", () => openMealBuilder(null));
       document.getElementById("btn-cancel-meal").addEventListener("click", () => {
         document.getElementById("meal-builder-overlay").classList.remove("open");
+      });
+
+      ["ml-kcal", "ml-protein", "ml-carb", "ml-fat"].forEach((id) => {
+        document.getElementById(id).addEventListener("input", renderMealPreview);
+      });
+      document.getElementById("btn-add-ingredient").addEventListener("click", addIngredientFromInput);
+      document.getElementById("ml-ingredient-input").addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") { ev.preventDefault(); addIngredientFromInput(); }
+      });
+      document.getElementById("ml-ingredient-chips").addEventListener("click", (ev) => {
+        const btn = ev.target.closest("[data-remove-ingredient]");
+        if (!btn) return;
+        builderIngredients.splice(Number(btn.dataset.removeIngredient), 1);
+        renderIngredientChips();
+        syncIngredientsTextarea();
       });
       document.getElementById("btn-save-meal").addEventListener("click", () => {
         const DB = getDB();
