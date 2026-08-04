@@ -18,319 +18,35 @@ function saveDB(db) {
 
 let DB = loadDB();
 
-/* ---------- Helpers ---------- */
+/* ============================================================
+   SHARED UTILITIES (js/modules/shared/*.js)
+   Pure helpers (no DB/COLORS dependency) are destructured directly.
+   Helpers that read the current DB or COLORS are built via small
+   factories so they always see live state after import/reset/cloud
+   sync (DB) or a theme change (COLORS) -- the same accessor pattern
+   every feature module already uses.
+   ============================================================ */
 
-function dayKey(d) {
-  const dt = d || new Date();
-  const y = dt.getFullYear();
-  const m = String(dt.getMonth() + 1).padStart(2, "0");
-  const day = String(dt.getDate()).padStart(2, "0");
-  return y + "-" + m + "-" + day;
-}
+const { dayKey, weekdayBit } = window.BioCommandShared.dates;
+const { fmtMin, clamp01, meanOf } = window.BioCommandShared.formatting;
+const { armDangerButton } = window.BioCommandShared.dom;
+const { genId } = window.BioCommandShared.ids;
+const { hexToRgba, readColors } = window.BioCommandShared.colors;
 
-function fmtMin(min) {
-  const neg = min < 0;
-  const a = Math.abs(Math.round(min));
-  const h = Math.floor(a / 60);
-  const m = a % 60;
-  return (neg ? "-" : "") + h + ":" + String(m).padStart(2, "0");
-}
-
-function clamp01(x) { return Math.max(0, Math.min(1, x)); }
-
-function readColors() {
-  const cs = getComputedStyle(document.documentElement);
-  return {
-    red:   cs.getPropertyValue("--red").trim(),
-    amber: cs.getPropertyValue("--amber").trim(),
-    green: cs.getPropertyValue("--green").trim(),
-    cyan:  cs.getPropertyValue("--cyan").trim(),
-    dim:   cs.getPropertyValue("--text-3").trim()
-  };
-}
 let COLORS = readColors();
 
-function hexToRgba(hex, a) {
-  const h = hex.replace("#", "");
-  const n = parseInt(h, 16);
-  return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
-}
-
-function bandColor(score) {
-  if (score == null) return COLORS.dim;
-  if (score < 34) return COLORS.red;
-  if (score < 67) return COLORS.amber;
-  return COLORS.green;
-}
-function bandName(score) {
-  if (score == null) return "CAL";
-  if (score < 34) return "RED";
-  if (score < 67) return "AMBER";
-  return "GREEN";
-}
-
-/* ============================================================
-   SCORING ENGINES
-   ============================================================ */
-
-function baselineFor(field, excludeKey, windowDays) {
-  const keys = Object.keys(DB.telemetry)
-    .filter(k => k !== excludeKey && DB.telemetry[k][field] != null)
-    .sort()
-    .reverse()
-    .slice(0, windowDays);
-  if (keys.length < 3) return null;
-  const sum = keys.reduce((s, k) => s + DB.telemetry[k][field], 0);
-  return sum / keys.length;
-}
-
-/* Strain: RPE-based when the operator logged perceived effort (most
-   accurate). When Garmin supplied minutes and average training HR but
-   no RPE (the normal auto-sync case), fall back to a heart-rate-reserve
-   proxy: %HRR maps to an effective RPE, then runs through the same
-   saturating curve so the two methods land on a comparable scale.
-   Requires the operator's max HR (set once in SYS > Profile). */
-function computeStrain(row) {
-  const trainMin = row.trainingMinutes;
-  if (!trainMin || trainMin <= 0) return { value: 0, method: "none" };
-
-  if (row.sessionRPE != null) {
-    const lp = trainMin * row.sessionRPE;
-    return { value: 21 * (1 - Math.exp(-lp / 450)), method: "rpe" };
-  }
-
-  const maxHR = DB.operator.maxHR;
-  if (row.trainingAvgHR != null && row.restingHR != null && maxHR && maxHR > row.restingHR) {
-    const hrr = clamp01((row.trainingAvgHR - row.restingHR) / (maxHR - row.restingHR));
-    const effRPE = hrr * 10;
-    const lp = trainMin * effRPE;
-    return { value: 21 * (1 - Math.exp(-lp / 450)), method: "hr" };
-  }
-
-  return { value: 0, method: "none" };
-}
-
-function computeScores(row, key) {
-  const win = DB.operator.baselineWindowDays;
-  const target = DB.operator.targetSleepMinutes;
-
-  const hrvBase = baselineFor("hrvMs", key, win);
-  const rhrBase = baselineFor("restingHR", key, win);
-
-  const out = {
-    hrvBase: hrvBase,
-    hrvDeltaPct: null,
-    readiness: null,
-    sleepPerf: null,
-    strain: 0,
-    strainMethod: "none",
-    calibrating: hrvBase == null
-  };
-  const strainResult = computeStrain(row);
-  out.strain = strainResult.value;
-  out.strainMethod = strainResult.method;
-
-  if (row.sleepTotalMin != null) {
-    out.sleepPerf = Math.min(100, Math.round(row.sleepTotalMin / target * 100));
-  }
-
-  if (hrvBase != null && row.hrvMs != null) {
-    const ratio = row.hrvMs / hrvBase;
-    out.hrvDeltaPct = Math.round((ratio - 1) * 100);
-    const hrvScore = clamp01((ratio - 0.55) / (1.20 - 0.55)) * 100;
-
-    let rhrScore = null;
-    if (rhrBase != null && row.restingHR != null && row.restingHR > 0) {
-      const rRatio = rhrBase / row.restingHR;
-      rhrScore = clamp01((rRatio - 0.80) / (1.12 - 0.80)) * 100;
-    }
-    const sleepScore = out.sleepPerf != null ? out.sleepPerf : null;
-
-    if (rhrScore != null && sleepScore != null) {
-      out.readiness = Math.round(0.50 * hrvScore + 0.25 * rhrScore + 0.25 * sleepScore);
-      out.components = [
-        { label: "HRV vs baseline", weight: 0.50, score: hrvScore },
-        { label: "Resting HR vs baseline", weight: 0.25, score: rhrScore },
-        { label: "Sleep vs target", weight: 0.25, score: sleepScore }
-      ];
-    } else if (sleepScore != null) {
-      out.readiness = Math.round(0.65 * hrvScore + 0.35 * sleepScore);
-      out.components = [
-        { label: "HRV vs baseline", weight: 0.65, score: hrvScore },
-        { label: "Sleep vs target", weight: 0.35, score: sleepScore }
-      ];
-    } else {
-      out.readiness = Math.round(hrvScore);
-      out.components = [
-        { label: "HRV vs baseline", weight: 1.00, score: hrvScore }
-      ];
-    }
-  }
-
-  return out;
-}
-
-/* ============================================================
-   INTEL ENGINE (rendering extracted into js/modules/dashboard)
-   meanOf stays here: Journal and Protocols also depend on it.
-   ============================================================ */
-
-function meanOf(arr) {
-  if (!arr.length) return null;
-  return arr.reduce((a, b) => a + b, 0) / arr.length;
-}
-
-/* ============================================================
-   SPARKLINES (data helpers extracted into js/modules/dashboard)
-   sparkLine/sparkBars stay here: Dashboard depends on them, and
-   they are pure chart primitives pending the shared-utilities pass.
-   ============================================================ */
-
-const SPARK_W = 132, SPARK_H = 38;
-
-function sparkLine(values, color) {
-  const n = values.length;
-  const defined = values.map((v, i) => ({ v, i })).filter(p => p.v != null);
-  if (!defined.length) return '<svg class="mc-spark" viewBox="0 0 132 38"></svg>';
-  const vals = defined.map(p => p.v);
-  const min = Math.min(...vals), max = Math.max(...vals);
-  const pad = (max - min) * 0.18 || Math.max(1, max * 0.05);
-  const lo = min - pad, hi = max + pad;
-  const x = i => 6 + i * (SPARK_W - 12) / (n - 1);
-  const y = v => SPARK_H - 5 - (v - lo) / (hi - lo) * (SPARK_H - 10);
-
-  let d = "", prevIdx = null;
-  defined.forEach(p => {
-    const cmd = (prevIdx != null && p.i === prevIdx + 1) ? "L" : "M";
-    d += cmd + x(p.i).toFixed(1) + " " + y(p.v).toFixed(1) + " ";
-    prevIdx = p.i;
-  });
-  const last = defined[defined.length - 1];
-  const area = d && defined.length > 1
-    ? '<path d="' + d + 'L' + x(last.i).toFixed(1) + " " + (SPARK_H - 3) +
-      " L" + x(defined[0].i).toFixed(1) + " " + (SPARK_H - 3) +
-      ' Z" fill="' + hexToRgba(color, 0.1) + '" stroke="none"></path>'
-    : "";
-  return '<svg class="mc-spark" viewBox="0 0 132 38">' + area +
-    '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2" ' +
-    'stroke-linecap="round" stroke-linejoin="round"></path>' +
-    '<circle cx="' + x(last.i).toFixed(1) + '" cy="' + y(last.v).toFixed(1) +
-    '" r="3" fill="' + color + '"></circle></svg>';
-}
-
-function sparkBars(values, color, fixedMax) {
-  const n = values.length;
-  const max = fixedMax || Math.max(...values.filter(v => v != null), 1);
-  const slot = SPARK_W / n, bw = slot * 0.5;
-  let rects = "";
-  values.forEach((v, i) => {
-    const cx = i * slot + slot / 2;
-    if (v == null || v <= 0) {
-      rects += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + (SPARK_H - 4) +
-        '" width="' + bw.toFixed(1) + '" height="2" rx="1" fill="' +
-        hexToRgba(color, 0.18) + '"></rect>';
-    } else {
-      const h = Math.max(3, (v / max) * (SPARK_H - 8));
-      rects += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + (SPARK_H - 2 - h).toFixed(1) +
-        '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" fill="' +
-        color + '"></rect>';
-    }
-  });
-  return '<svg class="mc-spark" viewBox="0 0 132 38">' + rects + "</svg>";
-}
-
-/* ============================================================
-   DETAIL ENGINE (orchestration extracted into js/modules/dashboard)
-   bigLine/bigBars/bigStacked stay here: Dashboard depends on them,
-   and bigLine is also relied on directly by the Biomarkers module.
-   ============================================================ */
-
-function bigLine(values, color) {
-  const n = values.length;
-  const defined = values.map((v, i) => ({ v, i })).filter(p => p.v != null);
-  if (!defined.length) return '<svg class="detail-chart" viewBox="0 0 320 100"></svg>';
-  const vals = defined.map(p => p.v);
-  const min = Math.min(...vals), max = Math.max(...vals);
-  const pad = (max - min) * 0.18 || Math.max(1, max * 0.05);
-  const lo = min - pad, hi = max + pad;
-  const x = i => 14 + i * (320 - 28) / Math.max(1, n - 1);
-  const y = v => 90 - (v - lo) / (hi - lo) * 66;
-
-  let d = "", prevIdx = null;
-  defined.forEach(p => {
-    const cmd = (prevIdx != null && p.i === prevIdx + 1) ? "L" : "M";
-    d += cmd + x(p.i).toFixed(1) + " " + y(p.v).toFixed(1) + " ";
-    prevIdx = p.i;
-  });
-  const last = defined[defined.length - 1];
-  const area = defined.length > 1
-    ? '<path d="' + d + "L" + x(last.i).toFixed(1) + " 90 L" +
-      x(defined[0].i).toFixed(1) + ' 90 Z" fill="' + hexToRgba(color, 0.1) + '" stroke="none"></path>'
-    : "";
-  const dots = defined.map(p =>
-    '<circle cx="' + x(p.i).toFixed(1) + '" cy="' + y(p.v).toFixed(1) +
-    '" r="2.6" fill="' + color + '"></circle>').join("");
-  return '<svg class="detail-chart" viewBox="0 0 320 100">' + area +
-    '<path d="' + d + '" fill="none" stroke="' + color +
-    '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>' +
-    dots + "</svg>";
-}
-
-function bigBars(values, color, fixedMax, targetLine) {
-  const n = values.length;
-  const max = fixedMax || Math.max(...values.filter(v => v != null), 1);
-  const slot = (320 - 16) / n, bw = slot * 0.55;
-  let rects = "";
-  values.forEach((v, i) => {
-    const cx = 8 + i * slot + slot / 2;
-    if (v == null || v <= 0) {
-      rects += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="87" width="' +
-        bw.toFixed(1) + '" height="3" rx="1.5" fill="' + hexToRgba(color, 0.18) + '"></rect>';
-    } else {
-      const h = Math.max(4, (v / max) * 70);
-      rects += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + (90 - h).toFixed(1) +
-        '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) +
-        '" rx="3" fill="' + color + '"></rect>';
-    }
-  });
-  let line = "";
-  if (targetLine != null && max) {
-    const ty = 90 - clamp01(targetLine / max) * 70;
-    line = '<line x1="4" y1="' + ty.toFixed(1) + '" x2="316" y2="' + ty.toFixed(1) +
-      '" stroke="' + COLORS.dim + '" stroke-width="1" stroke-dasharray="3,3"></line>';
-  }
-  return '<svg class="detail-chart" viewBox="0 0 320 100">' + line + rects + "</svg>";
-}
-
-function bigStacked(days) {
-  const n = days.length;
-  const maxTotal = Math.max(...days.map(d => (d.deep || 0) + (d.core || 0) + (d.rem || 0) + (d.awake || 0)), 1);
-  const slot = (320 - 16) / n, bw = slot * 0.55;
-  const seg = [["deep", "#2456C9"], ["core", "#3B4552"], ["rem", COLORS.cyan], ["awake", COLORS.red]];
-  let rects = "";
-  days.forEach((d, i) => {
-    const cx = 8 + i * slot + slot / 2;
-    const total = (d.deep || 0) + (d.core || 0) + (d.rem || 0) + (d.awake || 0);
-    if (total <= 0) {
-      rects += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="87" width="' +
-        bw.toFixed(1) + '" height="3" rx="1.5" fill="' + hexToRgba(COLORS.dim, 0.3) + '"></rect>';
-      return;
-    }
-    const scale = 70 / maxTotal;
-    let yBottom = 90;
-    seg.forEach(([key, col]) => {
-      const v = d[key] || 0;
-      if (v <= 0) return;
-      const h = v * scale;
-      const yTop = yBottom - h;
-      rects += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + yTop.toFixed(1) +
-        '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) +
-        '" rx="1.5" fill="' + col + '"></rect>';
-      yBottom = yTop;
-    });
-  });
-  return '<svg class="detail-chart" viewBox="0 0 320 100">' + rects + "</svg>";
-}
+const { bandColor, bandName } = window.BioCommandShared.colors.createColorHelpers({
+  getColors: () => COLORS
+});
+const { sparkLine, sparkBars, bigLine, bigBars, bigStacked } = window.BioCommandShared.charts.createChartHelpers({
+  getColors: () => COLORS,
+  hexToRgba,
+  clamp01
+});
+const { baselineFor, computeStrain, computeScores } = window.BioCommandShared.scoring.createScoringHelpers({
+  getDB: () => DB,
+  clamp01
+});
 
 /* ============================================================
    SETTINGS (extracted into js/modules/settings/index.js)
@@ -355,10 +71,6 @@ settingsModule.init();
 
 /* ============================================================
    DASHBOARD / TODAY VIEW (extracted into js/modules/dashboard/index.js)
-   Scoring engine, chart primitives, genId/armDangerButton, meanOf,
-   etc. still live in this file pending the shared-utilities
-   extraction; Dashboard receives them all as injected dependencies,
-   exactly like Fuel/Training/Journal/Biomarkers/Protocols already do.
    ============================================================ */
 
 const dashboardModule = window.BioCommandDashboard.createDashboardModule({
@@ -481,31 +193,7 @@ function renderDataCard() {
 
 /* ============================================================
    TRAIN MODULE (extracted into js/modules/training/index.js)
-   armDangerButton/genId remain here pending the shared-utilities
-   extraction; other modules (Fuel, Training) already depend on them.
    ============================================================ */
-
-function armDangerButton(btn, actionLabel, doAction) {
-  if (btn.dataset.armed === "1") {
-    clearTimeout(Number(btn.dataset.armTimer));
-    btn.dataset.armed = "0";
-    btn.textContent = actionLabel;
-    doAction();
-    return;
-  }
-  btn.dataset.armed = "1";
-  const original = btn.textContent;
-  btn.textContent = "TAP AGAIN TO CONFIRM";
-  const t = setTimeout(() => {
-    btn.dataset.armed = "0";
-    btn.textContent = original;
-  }, 3500);
-  btn.dataset.armTimer = String(t);
-}
-
-function genId(prefix) {
-  return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-}
 
 const trainingModule = window.BioCommandTraining.createTrainingModule({
   dayKey,
@@ -588,24 +276,13 @@ function renderMarkerList() {
 }
 
 /* ============================================================
-   PROTOCOL MODULE
+   PROTOCOL MODULE (extracted into js/modules/protocols/index.js)
    scheduleMask bit 0 = Monday ... bit 6 = Sunday. Streaks count
    consecutive scheduled days completed, working backward from
    today. The correlation line compares average Recovery on days
    a directive was completed vs not, once there is enough of
    both to say anything meaningful (3+ each).
    ============================================================ */
-
-/* ============================================================
-   PROTOCOL MODULE (extracted into js/modules/protocols/index.js)
-   weekdayBit stays here: Notifications and Tab Badges (not yet
-   extracted) also depend on it.
-   ============================================================ */
-
-function weekdayBit(date) {
-  const d = date.getDay(); // 0 Sun .. 6 Sat
-  return d === 0 ? 6 : d - 1; // Mon=0 .. Sun=6
-}
 
 const protocolsModule = window.BioCommandProtocols.createProtocolsModule({
   dayKey,
