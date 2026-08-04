@@ -12,13 +12,13 @@
        Edge Function cron once that step is configured.
    ============================================================ */
 
-const CACHE_VERSION = "bc-v2.3.1-design-tokens";
+const CACHE_VERSION = "bc-v2.3.2-core-primitives";
 const APP_ROOT = self.registration.scope;
 const SHELL_URLS = [
   APP_ROOT,
   APP_ROOT + "index.html",
   APP_ROOT + "manifest.json",
-  APP_ROOT + "css/app.css?v=2.3.1",
+  APP_ROOT + "css/app.css?v=2.3.2",
   APP_ROOT + "css/intelligence.css?v=2.3.1",
   APP_ROOT + "css/history.css?v=2.3.1",
   APP_ROOT + "js/vendor/supabase.min.js?v=2.112.0",
@@ -33,6 +33,7 @@ const SHELL_URLS = [
   APP_ROOT + "js/modules/shared/charts.js?v=2.3.1",
   APP_ROOT + "js/modules/shared/scoring.js?v=2.2.2",
   APP_ROOT + "js/modules/shared/sanitize.js?v=2.2.2",
+  APP_ROOT + "js/modules/shared/focus-trap.js?v=2.3.2",
   APP_ROOT + "js/modules/history/index.js?v=2.2.2",
   APP_ROOT + "js/modules/fuel/index.js?v=2.2.2",
   APP_ROOT + "js/modules/training/index.js?v=2.2.2",
@@ -44,7 +45,7 @@ const SHELL_URLS = [
   APP_ROOT + "js/modules/data-management/index.js?v=2.2.2",
   APP_ROOT + "js/modules/sync/index.js?v=2.2.2",
   APP_ROOT + "js/modules/notifications/index.js?v=2.2.2",
-  APP_ROOT + "js/app.js?v=2.2.2",
+  APP_ROOT + "js/app.js?v=2.3.2",
   APP_ROOT + "js/intelligence.js?v=2.2.2",
   APP_ROOT + "js/history.js?v=2.2.2"
 ];

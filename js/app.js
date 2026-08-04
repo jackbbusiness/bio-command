@@ -87,6 +87,7 @@ const { armDangerButton } = window.BioCommandShared.dom;
 const { genId } = window.BioCommandShared.ids;
 const { hexToRgba, readColors } = window.BioCommandShared.colors;
 const { escapeHtml } = window.BioCommandShared.sanitize;
+const { initOverlayFocusManagement } = window.BioCommandShared.focusTrap;
 
 let COLORS = readColors();
 
@@ -422,9 +423,11 @@ document.getElementById("btn-sys").addEventListener("click", () => showView("vie
 (function initHeader() {
   const now = new Date();
   const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
-  document.getElementById("hdr-date").textContent =
+  document.getElementById("hdr-date-text").textContent =
     String(now.getDate()).padStart(2, "0") + " " + months[now.getMonth()];
 })();
+
+initOverlayFocusManagement();
 
 /* ============================================================
    BOOT
