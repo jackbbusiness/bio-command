@@ -1,9 +1,4 @@
-/* BIO-COMMAND History Mode v2.2 */
-.header-date-btn {
-  appearance:none; border:0; background:transparent; color:var(--text-2);
-  font:inherit; letter-spacing:inherit; padding:3px 2px; cursor:pointer;
-}
-.header-date-btn:active { color:var(--cyan); }
+/* BIO-COMMAND History Mode v2.7 -- expandable timeline redesign */
 .history-toolbar {
   position:relative; display:grid; grid-template-columns:48px 1fr 48px;
   align-items:center; gap:8px; padding:4px 0 2px;
@@ -22,6 +17,7 @@
 .history-date-kicker { font:600 9px/1.2 var(--mono); letter-spacing:.15em; color:var(--cyan); }
 .history-date-label { margin-top:5px; font:650 18px/1.15 var(--mono); }
 .history-native-date { position:absolute; opacity:0; pointer-events:none; width:1px; height:1px; }
+
 .history-range-row {
   display:grid; grid-template-columns:repeat(5,1fr); gap:5px; padding:4px;
   border:1px solid var(--tac-border); background:var(--tac-surface); border-radius:999px;
@@ -31,42 +27,53 @@
   color:var(--text-3); font:600 10px var(--mono); letter-spacing:.08em; cursor:pointer;
 }
 .history-range.active { background:var(--tac-raised); color:var(--cyan); box-shadow:inset 0 0 0 1px var(--tac-border); }
-.history-metric-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
-.history-metric {
-  min-height:98px; padding:12px; border:1px solid var(--tac-border); border-radius:var(--r-card);
-  background:var(--tac-surface); display:flex; flex-direction:column;
-}
-.hm-label { font:500 9px var(--mono); letter-spacing:.12em; color:var(--text-3); text-transform:uppercase; }
-.hm-value { margin-top:auto; font:650 25px/1 var(--mono); font-variant-numeric:tabular-nums; }
-.hm-sub { margin-top:6px; font:9px var(--mono); color:var(--text-3); }
-.history-range-summary { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+
+/* Series-toggle chips borrow the shared .chip primitive but color
+   themselves per series, including while selected (the generic
+   .chip.selected default is cyan for everything). */
+.chip.selected[data-series="recovery"] { border-color:var(--cyan); color:var(--cyan); background:rgba(47,215,255,0.08); }
+.chip.selected[data-series="strain"]   { border-color:var(--red);  color:var(--red);  background:rgba(255,59,77,0.08); }
+.chip.selected[data-series="sleep"]    { border-color:var(--amber);color:var(--amber);background:rgba(255,174,43,0.08); }
+html[data-theme="light"] .chip.selected[data-series="recovery"] { background:rgba(0,136,174,0.08); }
+
+.history-range-summary { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-top:14px; }
 .history-summary-item { padding:10px; border-radius:10px; background:var(--tac-raised); }
 .hsi-value { font:650 17px var(--mono); }
 .hsi-label { margin-top:3px; font:8px var(--mono); letter-spacing:.09em; color:var(--text-3); text-transform:uppercase; }
-.history-trend { height:126px; margin-top:14px; display:flex; align-items:flex-end; gap:3px; border-bottom:1px solid var(--tac-border); padding:8px 2px 0; }
-.history-trend-col { flex:1; min-width:2px; display:flex; align-items:flex-end; gap:1px; height:100%; }
-.history-trend-bar { flex:1; min-height:2px; border-radius:3px 3px 0 0; background:var(--cyan); opacity:.78; }
-.history-trend-bar.strain { background:var(--red); opacity:.48; }
+
 .history-empty { padding:20px 4px; text-align:center; color:var(--text-3); font:11px/1.6 var(--mono); }
-.history-record { display:flex; flex-direction:column; }
+
+/* ---------- Timeline ---------- */
+.history-day-row {
+  border:1px solid var(--tac-border); border-radius:var(--r-input);
+  background:var(--tac-surface); margin-bottom:var(--space-3); overflow:hidden;
+}
+.history-day-summary {
+  appearance:none; width:100%; border:0; background:transparent; cursor:pointer;
+  display:flex; align-items:center; gap:var(--space-3);
+  padding:var(--space-3) var(--space-4); min-height:56px; text-align:left; color:var(--text-1);
+}
+.hd-date { display:flex; flex-direction:column; width:52px; flex:none; }
+.hd-weekday { font:600 8px var(--mono); letter-spacing:.1em; color:var(--text-3); text-transform:uppercase; }
+.hd-daynum { font:650 12px var(--mono); margin-top:2px; }
+.hd-readiness { font:650 20px var(--mono); font-variant-numeric:tabular-nums; width:38px; flex:none; text-align:center; }
+.hd-meta { flex:1; font:11px var(--mono); color:var(--text-2); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hd-chevron { transition:transform var(--dur-fast) var(--ease-out); color:var(--text-3); flex:none; }
+.history-day-row.open .hd-chevron { transform:rotate(180deg); }
+.history-day-body {
+  max-height:0; overflow:hidden;
+  transition:max-height var(--dur-base) var(--ease-out);
+  padding:0 var(--space-4);
+}
+.history-day-row.open .history-day-body { max-height:2000px; padding-bottom:var(--space-4); }
+@media (prefers-reduced-motion:reduce) { .history-day-body { transition:none; } }
+
 .history-record-group { padding:11px 0; border-top:1px solid var(--tac-border); }
 .history-record-group:first-child { border-top:0; padding-top:0; }
 .hrg-head { display:flex; align-items:center; gap:7px; margin-bottom:7px; font:600 10px var(--mono); letter-spacing:.1em; color:var(--text-2); text-transform:uppercase; }
 .hrg-line { display:flex; justify-content:space-between; gap:12px; padding:4px 0; font:11px/1.45 var(--mono); color:var(--text-2); }
 .hrg-line strong { color:var(--text-1); text-align:right; font-weight:550; }
-.history-day-strip { display:flex; gap:7px; overflow-x:auto; padding-bottom:5px; scroll-snap-type:x mandatory; scrollbar-width:none; }
-.history-day-strip::-webkit-scrollbar { display:none; }
-.history-day-chip {
-  appearance:none; flex:0 0 58px; min-height:70px; scroll-snap-align:start; border-radius:12px;
-  border:1px solid var(--tac-border); background:var(--tac-raised); color:var(--text-2); cursor:pointer;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
-}
-.history-day-chip.active { border-color:var(--cyan); color:var(--cyan); }
-.hdc-dow { font:8px var(--mono); letter-spacing:.1em; }
-.hdc-day { font:650 18px var(--mono); }
-.hdc-dot { width:5px; height:5px; border-radius:50%; background:var(--text-3); }
-.history-day-chip.has-data .hdc-dot { background:var(--green); box-shadow:0 0 5px var(--green); }
+
 @media (min-width:760px) {
-  .history-metric-grid { grid-template-columns:repeat(4,1fr); }
   .history-range-summary { grid-template-columns:repeat(4,1fr); }
 }
