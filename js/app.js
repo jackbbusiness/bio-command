@@ -333,12 +333,32 @@ function bigStacked(days) {
 }
 
 /* ============================================================
+   SETTINGS (extracted into js/modules/settings/index.js)
+   Constructed before Dashboard: Fuel/Biomarkers/Dashboard all read
+   the stored AI key through settingsModule.loadAI. renderCommand is
+   still a bare app.js identifier at this point in the file, but
+   function declarations are hoisted, so this reference resolves
+   correctly the moment it's actually called (never before boot).
+   ============================================================ */
+
+const settingsModule = window.BioCommandSettings.createSettingsModule({
+  Storage,
+  saveDB,
+  renderCommand,
+  computeStrain,
+  readColors,
+  getDB: () => DB,
+  getColors: () => COLORS,
+  setColors: (c) => { COLORS = c; }
+});
+settingsModule.init();
+
+/* ============================================================
    DASHBOARD / TODAY VIEW (extracted into js/modules/dashboard/index.js)
    Scoring engine, chart primitives, genId/armDangerButton, meanOf,
-   loadAI, etc. still live in this file pending the shared-utilities
-   and Settings extractions; Dashboard receives them all as injected
-   dependencies, exactly like Fuel/Training/Journal/Biomarkers/
-   Protocols already do.
+   etc. still live in this file pending the shared-utilities
+   extraction; Dashboard receives them all as injected dependencies,
+   exactly like Fuel/Training/Journal/Biomarkers/Protocols already do.
    ============================================================ */
 
 const dashboardModule = window.BioCommandDashboard.createDashboardModule({
@@ -352,7 +372,7 @@ const dashboardModule = window.BioCommandDashboard.createDashboardModule({
   baselineFor,
   computeScores,
   meanOf,
-  loadAI,
+  loadAI: settingsModule.loadAI,
   sparkLine,
   sparkBars,
   bigLine,
@@ -500,35 +520,6 @@ function renderUplink() {
     : "";
 }
 
-function renderProfile() {
-  document.getElementById("prof-maxhr").value = DB.operator.maxHR || "";
-}
-
-document.getElementById("btn-save-profile").addEventListener("click", () => {
-  const v = Number(document.getElementById("prof-maxhr").value);
-  const st = document.getElementById("profile-status");
-  if (!Number.isFinite(v) || v < 100 || v > 230) {
-    st.textContent = "ENTER A VALID BPM";
-    st.style.color = COLORS.red;
-    return;
-  }
-  DB.operator.maxHR = v;
-  let updated = 0;
-  Object.keys(DB.telemetry).forEach(k => {
-    const r = DB.telemetry[k];
-    if (r.sessionRPE == null && r.trainingAvgHR != null) {
-      const res = computeStrain(r);
-      r.systemLoadScore = Math.round(res.value * 10) / 10;
-      r.strainMethod = res.method;
-      updated++;
-    }
-  });
-  saveDB(DB);
-  renderCommand();
-  st.textContent = "SAVED. " + updated + " DAY(S) RECALCULATED.";
-  st.style.color = COLORS.green;
-});
-
 document.getElementById("btn-save-uplink").addEventListener("click", () => {
   const cfg = loadSyncConfig() || {};
   cfg.url = document.getElementById("up-url").value.trim();
@@ -541,31 +532,26 @@ document.getElementById("btn-save-uplink").addEventListener("click", () => {
 document.getElementById("btn-sync").addEventListener("click", syncNow);
 
 /* ============================================================
-   ADVISOR KEY MANAGEMENT (SYS)
-   The brief-generation UI itself (Today) lives in
-   js/modules/dashboard/index.js; this is only the AI key storage
-   and the SYS-side key field, pending the Settings extraction.
+   ADVISOR KEY BOOT GLUE (SYS)
+   The AI key storage (loadAI/saveAI) now lives in Settings, and the
+   brief-generation UI (Today) lives in Dashboard. This glue stays
+   here because wiring it into either module directly would create a
+   cycle: Dashboard already depends on Settings for loadAI, so
+   Settings calling back into Dashboard's setAdvisorStatus would
+   depend on Dashboard in turn.
    ============================================================ */
-
-const AI_KEY = "biocommand.ai";
-
-function loadAI() {
-  try { return JSON.parse(Storage.get(AI_KEY)) || null; }
-  catch (e) { return null; }
-}
-function saveAI(cfg) { Storage.set(AI_KEY, JSON.stringify(cfg)); }
 
 document.getElementById("btn-save-ai").addEventListener("click", () => {
   const key = document.getElementById("ai-key").value.trim();
   const st = document.getElementById("advisor-key-status");
   if (!key) { st.textContent = "ENTER A KEY FIRST"; st.style.color = COLORS.red; return; }
-  saveAI({ key: key });
+  settingsModule.saveAI({ key: key });
   st.textContent = "KEY SAVED ON DEVICE"; st.style.color = COLORS.green;
   dashboardModule.setAdvisorStatus("READY");
 });
 
 (function initAdvisor() {
-  const cfg = loadAI();
+  const cfg = settingsModule.loadAI();
   if (cfg && cfg.key) {
     document.getElementById("ai-key").value = cfg.key;
     dashboardModule.setAdvisorStatus("READY");
@@ -723,7 +709,7 @@ const fuelModule = window.BioCommandFuel.createFuelModule({
   saveDB,
   genId,
   baselineFor,
-  loadAI,
+  loadAI: settingsModule.loadAI,
   armDangerButton,
   getDB: () => DB,
   getColors: () => COLORS
@@ -770,7 +756,7 @@ function renderJournalProto() {
 const biomarkersModule = window.BioCommandBiomarkers.createBiomarkersModule({
   dayKey,
   saveDB,
-  loadAI,
+  loadAI: settingsModule.loadAI,
   hexToRgba,
   bigLine,
   getDB: () => DB,
@@ -1263,28 +1249,6 @@ document.getElementById("btn-sys").addEventListener("click", () => showView("vie
     String(now.getDate()).padStart(2, "0") + " " + months[now.getMonth()];
 })();
 
-const THEME_KEY = "biocommand.theme";
-const metaTheme = document.getElementById("meta-theme");
-const btnTheme = document.getElementById("btn-theme");
-
-function applyTheme(mode) {
-  if (mode === "light") {
-    document.documentElement.dataset.theme = "light";
-  } else {
-    delete document.documentElement.dataset.theme;
-  }
-  metaTheme.setAttribute("content", mode === "light" ? "#EFF2F5" : "#0D0F12");
-  btnTheme.textContent = mode === "light" ? "DAY" : "NIGHT";
-  COLORS = readColors();
-  renderCommand();
-}
-
-btnTheme.addEventListener("click", () => {
-  const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
-  Storage.set(THEME_KEY, next);
-  applyTheme(next);
-});
-
 /* ============================================================
    BOOT
    ============================================================ */
@@ -1306,7 +1270,7 @@ if (sleepArchCard) {
 document.getElementById("btn-close-detail").addEventListener("click", closeDetail);
 
 renderUplink();
-renderProfile();
+settingsModule.render();
 renderDataCard();
 renderCloudCard();
 renderNotifCard();
@@ -1315,7 +1279,7 @@ renderJournal();
 initSupabase();
 initServiceWorker();
 renderTabBadges();
-applyTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
+settingsModule.applyTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
 if (loadSyncConfig() && (loadSyncConfig() || {}).pass) {
   syncNow();
 }
