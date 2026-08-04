@@ -904,6 +904,22 @@
         generateBriefing();
       });
       document.getElementById("btn-ask").addEventListener("click", askAdvisor);
+
+      const heroRingHook = document.getElementById("hero-ring-hook");
+      if (heroRingHook) {
+        heroRingHook.classList.add("clickable");
+        heroRingHook.addEventListener("click", () => openDetail("recovery"));
+      }
+      document.querySelectorAll(".stat-chip[data-detail]").forEach(el => {
+        el.classList.add("clickable");
+        el.addEventListener("click", () => openDetail(el.dataset.detail));
+      });
+      const sleepArchCard = document.getElementById("sleep-arch-card");
+      if (sleepArchCard) {
+        sleepArchCard.classList.add("clickable");
+        sleepArchCard.addEventListener("click", () => openDetail("sleepArch"));
+      }
+      document.getElementById("btn-close-detail").addEventListener("click", closeDetail);
     }
 
     return { init, render: renderCommand, openDetail, closeDetail, setAdvisorStatus, showBrief };
