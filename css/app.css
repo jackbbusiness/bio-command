@@ -17,7 +17,12 @@
 
   --text-1: #E3E9EF;
   --text-2: #8792A1;
-  --text-3: #545E6B;
+  /* Was #545E6B (2.5-2.9:1 against surface/raised/base -- fails WCAG
+     AA 4.5:1 for text and even the more lenient 3:1 icon/UI-component
+     threshold). Lightened while keeping the same blue-gray hue so the
+     text-2/text-3 hierarchy still reads, now 4.4-5.8:1 across every
+     dark-theme surface it sits on. */
+  --text-3: #878E97;
 
   --cyan:  #2FD7FF;
   --red:   #FF3B4D;
@@ -90,11 +95,17 @@ html[data-theme="light"] {
 
   --text-1: #171C22;
   --text-2: #4E5A68;
-  --text-3: #9AA4B0;
+  /* Was #9AA4B0 (2.1-2.5:1 -- same WCAG AA failure as dark theme's
+     text-3). Darkened, same hue, now 4.0-5.3:1. */
+  --text-3: #646B72;
 
   --cyan:  #0088AE;
   --red:   #D42A3C;
-  --green: #0C9E5C;
+  /* Was #0C9E5C (2.92:1 against --tac-raised, just under the 3:1
+     icon/UI-component threshold -- the notifications bell renders at
+     exactly this color-on-raised pairing when enabled). Darkened
+     slightly, now 3.5:1+ against every light-theme surface. */
+  --green: #0B8E53;
   --amber: #B87A00;
 
   --chrome-bg:  rgba(239, 242, 245, 0.9);
@@ -195,6 +206,7 @@ header.console .sys-id .ver { color: var(--text-3); font-weight: 400; }
 .sync-dot.busy { background: var(--cyan);  box-shadow: 0 0 7px var(--cyan); }
 
 .mode-btn {
+  position: relative;
   appearance: none;
   display: inline-flex;
   align-items: center;
@@ -211,8 +223,19 @@ header.console .sys-id .ver { color: var(--text-3); font-weight: 400; }
   transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .mode-btn:active { border-color: var(--cyan); color: var(--cyan); }
+/* Header is a fixed 46px(+safe-area) bar with these as its only
+   interactive children -- vertical-only slop can reach almost the
+   full header height with no risk of overlapping a sibling row. */
+.mode-btn::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  height: 40px;
+  transform: translateY(-50%);
+}
 
 .header-date-btn {
+  position: relative;
   appearance: none;
   display: inline-flex;
   align-items: center;
@@ -228,6 +251,13 @@ header.console .sys-id .ver { color: var(--text-3); font-weight: 400; }
   transition: color var(--dur-fast) var(--ease-out);
 }
 .header-date-btn:hover { color: var(--text-1); }
+.header-date-btn::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  height: 40px;
+  transform: translateY(-50%);
+}
 
 /* ---------- Icons ---------- */
 
@@ -290,6 +320,7 @@ button:focus-visible,
   padding: 4px;
 }
 .stepper-btn {
+  position: relative;
   appearance: none;
   width: 36px;
   height: 36px;
@@ -307,6 +338,16 @@ button:focus-visible,
   transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .stepper-btn:active { border-color: var(--cyan); color: var(--cyan); }
+/* +/- controls sit side by side with only the stepper's own 4px
+   padding between them and the value field -- vertical-only hit-slop
+   brings each up to a 44pt tap target without the two overlapping. */
+.stepper-btn::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+}
 .stepper-value {
   appearance: none;
   width: 64px;
@@ -326,6 +367,7 @@ button:focus-visible,
 
 .chip-row { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .chip {
+  position: relative;
   appearance: none;
   padding: 8px 14px;
   min-height: 36px;
@@ -339,6 +381,13 @@ button:focus-visible,
   color: var(--text-2);
   cursor: pointer;
   transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.chip::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
 }
 .chip.selected { border-color: var(--cyan); color: var(--cyan); background: rgba(47, 215, 255, 0.08); }
 html[data-theme="light"] .chip.selected { background: rgba(0, 136, 174, 0.08); }
@@ -617,6 +666,7 @@ html[data-theme="light"] .hud-card { box-shadow: 0 1px 2px rgba(23, 28, 34, 0.05
 /* ---------- Buttons + inputs ---------- */
 
 .tac-btn {
+  position: relative;
   appearance: none;
   font-family: var(--mono);
   font-size: 11px;
@@ -638,6 +688,20 @@ html[data-theme="light"] .hud-card { box-shadow: 0 1px 2px rgba(23, 28, 34, 0.05
 .tac-btn:active { border-color: var(--cyan); color: var(--cyan); }
 .tac-btn.primary { border-color: var(--cyan); color: var(--cyan); background: transparent; }
 .tac-btn.danger:active { border-color: var(--red); color: var(--red); }
+/* Several compact secondary buttons (Close/Cancel/New/Sync now, etc.)
+   override min-height down to 30-38px inline for tighter card-head
+   and row layouts. Rather than resizing them visually (which would
+   break those layouts), extend the actual tappable area to the
+   44pt minimum with an invisible vertical-only hit region -- kept
+   vertical-only so two such buttons sitting side by side in a
+   .btn-row never get overlapping hit zones from each other. */
+.tac-btn[style*="min-height:3"]::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+}
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 
 .tac-input {
@@ -1162,6 +1226,7 @@ html[data-theme="light"] nav.tabbar button.active { background: rgba(0, 136, 174
 .cloud-dot.syncing { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); animation: pulse 1s ease-in-out infinite; }
 .cloud-dot.error  { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
 .cloud-dot.offline { background: var(--text-3); }
+@media (prefers-reduced-motion: reduce) { .cloud-dot.syncing { animation: none; } }
 
 /* ---------- Auth / Supabase card ---------- */
 .auth-signed-in { display: flex; align-items: center; gap: 8px; }
@@ -1254,8 +1319,16 @@ nav.tabbar button { position: relative; }
 @media (prefers-reduced-motion: reduce) { .sc-check.check-pulse { animation: none; } }
 .day-toggle-row { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
 .day-toggle {
+  position: relative;
   width: 38px; height: 34px; border-radius: 8px; border: 1px solid var(--tac-border);
   background: transparent; color: var(--text-3); font-family: var(--mono); font-size: 10px; cursor: pointer;
+}
+.day-toggle::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
 }
 .day-toggle.active { background: var(--cyan); border-color: var(--cyan); color: #0D0F12; }
 
@@ -1265,9 +1338,17 @@ nav.tabbar button { position: relative; }
 .jq-q { flex: 1; }
 .jq-opts { display: flex; gap: 6px; }
 .jq-btn {
+  position: relative;
   appearance: none; padding: 6px 13px; border-radius: var(--r-chip);
   border: 1px solid var(--tac-border); background: transparent;
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; cursor: pointer;
+}
+.jq-btn::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  height: 40px;
+  transform: translateY(-50%);
 }
 .jq-btn:active, .jq-btn.sel { border-color: var(--cyan); color: var(--cyan); }
 .jq-btn.jq-pulse { animation: checkPulse 0.35s var(--ease-spring); }
@@ -1318,6 +1399,7 @@ html[data-theme="light"] .goal-chip.active { background: rgba(0,136,174,0.08); }
   animation: pulse 1.2s ease-in-out infinite;
 }
 @keyframes pulse { 0%,100% { opacity:0.4 } 50% { opacity:1 } }
+@media (prefers-reduced-motion: reduce) { .ai-thinking { animation: none; } }
 
 .meal-plan-day { margin-bottom: 14px; }
 .meal-plan-day-head { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; color: var(--text-3); margin-bottom: 6px; text-transform: uppercase; }

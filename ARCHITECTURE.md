@@ -142,7 +142,7 @@ boot-time glue or another module genuinely calls them:
 - **History**: `init, render, setDate, openHistory`
 - **Journal**: `init, render, renderProto` (compact widget on Today vs. full view on PROTO)
 - **Dashboard**: `init, render, openDetail, closeDetail, setAdvisorStatus, showBrief`
-- **Training**: `init, render, seedDefaultWorkouts` (also called once at boot regardless of which tab is open)
+- **Training**: `init, render, seedDefaultWorkouts, getUpcomingWorkout` (also called once at boot regardless of which tab is open; `getUpcomingWorkout` is a small cross-module read added for Dashboard's "Upcoming" card — see the v2 redesign section below)
 - **Sync**: `init, render, renderUplink, renderCloudCard, loadSyncConfig, syncNow, initSupabase, getSB, getCurrentUser, enqueueCloudSync`
 - **Settings**: `init, render, applyTheme, loadAI, saveAI`
 
@@ -262,6 +262,105 @@ change regardless of the version string.
    module touches `DB` — that another already-open view reflects an
    import/reset without needing a reload.
 
+## v2 redesign: shared UI primitive layer
+
+A 9-phase visual/interaction redesign (`feature/foundation-refactor`,
+after the module extraction above) added a second kind of shared
+code alongside the pure-logic helpers in "Shared utilities": small
+UI primitive factories, all under `js/modules/shared/`, all following
+the same `BioCommandShared.<name> = { createX }` attachment pattern
+as `colors.js`/`charts.js` above rather than a new namespace family.
+
+| File | Exports | Used by |
+|---|---|---|
+| `focus-trap.js` | `initOverlayFocusManagement()` — MutationObserver-based; called once in `app.js` | every `.overlay` app-wide (focus enters on open, traps Tab inside, returns focus to the trigger on close) |
+| `score-ring.js` | `createScoreRing({ radius, hexToRgba })` → `{ uid, circumference, markup(), setProgress(fraction, color) }` | Dashboard hero ring, Training rest-timer ring, Journal streak rings (cmd + proto) |
+| `stepper.js` | `wireStepper(root, { min, max, step, value, onChange })` | Training set-row load/reps/RPE, Fuel/Protocol builder numeric fields |
+| `toast.js` | `showToast(message, { tone, duration })` | Dashboard pull-to-refresh (the one call site with no natural inline status location — see coverage note below) |
+| `charts.js` (extended) | added `smoothPath`, `bigMultiLine(series)`, `wireChartTooltip(svgEl)`; `bigLine`/`bigBars` gained optional `labels`/`band` params | History's multi-series trend chart, Biomarkers' reference-band shading |
+| `ai-stream.js` | `createBrowserAnthropicTransport({ getApiKey, model, maxTokens })`, `createAdvisor({ transport })` → `{ ask(prompt, opts) }`, `appendToken(el, text)` | see below |
+
+Design tokens live in `css/app.css`'s `:root` (and its
+`html[data-theme="light"]` override): a spacing scale (`--space-1..7`),
+elevation (`--shadow-1..3`), motion (`--ease-out`/`--ease-spring`,
+`--dur-fast/base/slow/ring`), a type scale (`--fs-display/title/body/
+label/micro`), and `--focus-ring`. A single inline `<svg
+style="display:none">` icon sprite near the top of `index.html` holds
+every icon as a `<symbol>`, referenced app-wide via `<svg
+class="icon"><use href="#icon-name"/></svg>` — no separate icon
+library/file, so it costs nothing extra over the CSP the app already
+runs under (`script-src 'self'`, no external hosts).
+
+### AI transport-neutral architecture
+
+Before this redesign, four feature modules each built their own
+`fetch("https://api.anthropic.com/v1/messages", ...)` call with
+duplicated header/auth/SSE-parsing logic. `ai-stream.js` is now the
+**only** place in the app that knows how a prompt reaches Claude or
+how the response comes back:
+
+```js
+const advisorTransport = createBrowserAnthropicTransport({ getApiKey, model, maxTokens });
+const advisor = createAdvisor({ transport: advisorTransport }); // built once in app.js
+```
+
+The single `advisor` instance is injected into every module that
+needs it (Dashboard, Fuel, Biomarkers, History — 5 call sites across
+those 4 modules as of Phase 7, since Fuel has two independent AI
+features). Each module still owns its own prompt/system-text
+construction (that's product logic), but hands the actual
+network/streaming/parsing concern to `advisor.ask()`. Swapping the
+browser-direct transport for a future Supabase Edge Function proxy is
+a new transport implementation plus changing the one line that builds
+`advisorTransport` in `app.js` — no feature module changes. Verified
+by grep: `api.anthropic.com` appears in exactly one file
+(`ai-stream.js`); `advisor.ask(` appears in exactly five call sites
+app-wide.
+
+`appendToken(el, text)` always does `document.createTextNode`/
+`textContent` append, never `innerHTML` — this is the one place the
+"AI output is always plain text, never HTML" rule (from the earlier
+security-hardening pass) is enforced structurally, rather than
+re-implemented correctly by hand in five different call sites.
+
+### Loading-state coverage: skeleton vs. `.ai-thinking` vs. toast
+
+Two distinct async-loading patterns are used deliberately, not
+inconsistently:
+
+- **Skeleton shimmer** (`.skeleton` class, toggled on/off around the
+  first streamed token) for the three call sites that stream visible
+  prose into an on-page output element: Dashboard's brief, Fuel's
+  meal-plan generator, History's AI summary.
+- **`.ai-thinking` pulse text** for Biomarkers' AI lab-import, which
+  is a single-shot structured-JSON extraction rather than visible
+  streamed prose — there's no partial-content skeleton to shimmer
+  over, so a "reading..." status pulse is the correct pattern here,
+  not a gap.
+- **Toast** (`showToast`) has exactly one call site (pull-to-refresh)
+  because that's the one interaction with no natural inline status
+  location to write into. Every other save/delete action already has
+  an adjacent inline status element (`#profile-status`,
+  `#builder-status`, `#import-status`, etc.); adding toasts on top of
+  those would duplicate feedback rather than fill a real gap, so this
+  was left as-is rather than expanded for its own sake.
+
+### Touch targets
+
+`.tac-btn` defaults to a 44px `min-height`, but several call sites
+override it inline down to 30-38px for tighter card-head/row layouts
+(Close/Cancel/New buttons, Settings' compact Sync-now/Sign-out pair).
+Rather than resize those visually (which would break the layouts they
+were tuned for), an invisible `::before` pseudo-element extends the
+*tappable* area to 44px, vertically only — horizontal bounds are left
+exactly as rendered, so two such buttons sitting side by side in a
+`.btn-row` never get overlapping hit zones from each other. The same
+technique is applied to `.stepper-btn`, `.chip`, `.jq-btn`,
+`.day-toggle`, `.mode-btn`, and `.header-date-btn`. Confirmed with a
+Playwright test that clicks a coordinate strictly outside a button's
+visible box but inside its extended hit region and asserts the click
+still resolves to that button via `document.elementFromPoint`.
+
 ## Known runtime globals
 
 These are the `window.BioCommand*` namespaces every module attaches
@@ -269,11 +368,12 @@ itself to. They exist only so `app.js` can call the factory; nothing
 else should reference them directly.
 
 `BioCommandStorage`, `BioCommandShared` (`.dates`, `.formatting`,
-`.dom`, `.ids`, `.colors`, `.charts`, `.scoring`), `BioCommandHistory`,
-`BioCommandFuel`, `BioCommandTraining`, `BioCommandJournal`,
-`BioCommandBiomarkers`, `BioCommandProtocols`, `BioCommandDashboard`,
-`BioCommandSettings`, `BioCommandDataManagement`, `BioCommandSync`,
-`BioCommandNotifications`.
+`.dom`, `.ids`, `.colors`, `.charts`, `.scoring`, plus the v2 redesign's
+`.focusTrap`, `.scoreRing`, `.stepper`, `.toast`, `.aiStream`),
+`BioCommandHistory`, `BioCommandFuel`, `BioCommandTraining`,
+`BioCommandJournal`, `BioCommandBiomarkers`, `BioCommandProtocols`,
+`BioCommandDashboard`, `BioCommandSettings`, `BioCommandDataManagement`,
+`BioCommandSync`, `BioCommandNotifications`.
 
 ## Remaining technical debt
 
@@ -307,6 +407,25 @@ extraction):
   section above) means local development under a different path
   never gets real offline behavior, only a registered-but-inactive
   service worker.
+- **A stray, untracked-from-`index.html` `app.css` sits at the repo
+  root** (not `css/app.css`, which is the one actually loaded — see
+  the `<link>` in `index.html`). It's a committed leftover from before
+  the stylesheet moved into `css/`, last touched in the `V2` commit,
+  and is not referenced anywhere. Found during the v2 redesign's
+  Phase 9 contrast audit (a grep for a color token's old hex value
+  matched it too). Left in place rather than deleted, since removing
+  a tracked file is a separate decision from a "visual polish" pass.
+- **A corrupted-DB storage-banner message can render tall enough
+  (~200px+, for the long "could not be read" copy) that the page's
+  scroll position after reload leaves it partially above the fixed
+  header**, despite the `overflow-anchor: none` fix already in place
+  for the typical short-banner case. Reproduced identically before
+  and after the v2 redesign's Phase 8 Settings pass, confirming it's
+  pre-existing and not something that phase introduced. Not fixed —
+  Phase 8 was scoped to Settings visuals only ("placement/semantics
+  untouched"), and a real fix here means either shortening the
+  message or changing how corrupted-boot scroll restoration works,
+  which is a behavior change beyond that phase's brief.
 
 ## Manual testing checklist
 
@@ -327,3 +446,13 @@ areas:
 - [ ] Notifications: card reflects current permission state; service worker registers and reaches `activated`
 - [ ] History: shows Training/Fuel/Journal/Biomarker records for the selected day across all range presets (7/30/90/365/all)
 - [ ] Offline: with the app served under `/bio-command/`, a full reload with the network disabled still renders Today
+- [ ] Above-the-fold: at a 390×844 viewport, Today's header, hero
+      status, metrics strip, and at least one primary action all
+      render with zero scroll
+- [ ] Reduced motion: with `prefers-reduced-motion: reduce` emulated,
+      every animated element (score rings, pulses, skeletons, sheets,
+      pull-to-refresh spinner) either stops animating or falls back to
+      an instant state change
+- [ ] AI transport: `advisor.ask(` has exactly 5 call sites app-wide
+      (Dashboard, Fuel×2, Biomarkers, History) and `api.anthropic.com`
+      appears in exactly one file (`js/modules/shared/ai-stream.js`)

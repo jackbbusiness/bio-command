@@ -386,6 +386,17 @@ const protocolsModule = window.BioCommandProtocols.createProtocolsModule({
   getColors: () => COLORS
 });
 protocolsModule.init();
+// js/intelligence.js (a later classic <script>, not a module) references
+// isScheduledOnDate as a bare identifier the same way it references
+// dayKey/computeScores/etc -- it needs the module's real instance
+// (bound to the real weekdayBit dependency), not the factory, so this
+// is aliased here rather than exposed on window.BioCommandProtocols.
+// Found during the v2 redesign's Phase 9 offline audit: DB.protocols
+// stays empty until the PROTO tab's first render seeds it, so
+// Array.filter's callback (isScheduledOnDate) never actually ran in
+// most manual/test flows before that -- a pre-existing ReferenceError
+// hiding behind an empty-array no-op, not something this phase caused.
+const isScheduledOnDate = protocolsModule.isScheduledOnDate;
 
 function renderProtocolList() {
   protocolsModule.render();

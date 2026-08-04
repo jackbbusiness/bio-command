@@ -258,7 +258,7 @@
       });
     }
 
-    return { init, render: renderProtocolList };
+    return { init, render: renderProtocolList, isScheduledOnDate };
   }
 
   global.BioCommandProtocols = { createProtocolsModule };
