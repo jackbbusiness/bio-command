@@ -174,6 +174,7 @@ const syncModule = window.BioCommandSync.createSyncModule({
   renderCommand,
   renderJournal,
   renderDataCard,
+  showStorageBanner,
   getDB: () => DB,
   setDB: (newDB) => { DB = newDB; },
   getColors: () => COLORS

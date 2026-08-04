@@ -8,6 +8,11 @@
  *   app.js (Scoring Engines), pending the shared-utilities extraction.
  * - renderCommand() / renderJournal() — cross-module render calls
  *   this module triggers after a Garmin feed sync or a cloud pull.
+ * - showStorageBanner() — app.js's storage banner (added for the
+ *   corrupted-DB/quota/volatile-storage warnings); reused here,
+ *   informational tone, to surface when a cloud pull had to resolve
+ *   a genuine conflict (same record edited on two unsynced devices)
+ *   rather than resolving it silently.
  * - getDB() / getColors() — read accessors, and setDB() — a write
  *   callback — because DB is reassigned wholesale by a cloud pull
  *   merge (this module *is* one of the reassignment sources; every
@@ -31,7 +36,7 @@
  * it is a cleanup beyond the scope of this extraction.
  */
 (function (global) {
-  function createSyncModule({ Storage, DB_KEY, dayKey, computeScores, saveDB, renderCommand, renderJournal, renderDataCard, getDB, setDB, getColors }) {
+  function createSyncModule({ Storage, DB_KEY, dayKey, computeScores, saveDB, renderCommand, renderJournal, renderDataCard, showStorageBanner, getDB, setDB, getColors }) {
     const SYNC_KEY = "biocommand.sync";
     const SYNC_PASS_KEY = "biocommand.sync.pass";
     const SB_CONFIG_KEY = "biocommand.supabase";
@@ -236,6 +241,195 @@
       setCloudDot(state || "");
     }
 
+    /* ---------- Cloud pull merge ----------
+       A pull used to take the remote row as the base and discard
+       everything local except today's telemetry -- meaning any
+       local-only session, workout, protocol, fuel log entry, journal
+       day, or biomarker log that hadn't been pushed yet was silently
+       destroyed on every pull (which runs automatically on every app
+       open with a signed-in session). These merge* helpers replace
+       that with a union merge per DB.v1 field, so pulling can no
+       longer make local-only data disappear:
+         - id-keyed and value-only arrays (sessions, workouts,
+           protocols, mealTemplates, plannedMeals, biomarkerLogs,
+           fuelLog): unioned. An id present on only one side is kept
+           as-is; genId()'s timestamp+random suffix makes a genuine
+           same-id-different-content collision between independently
+           generated records practically impossible, so "local wins
+           on same id" is a safety net, not the normal path.
+         - telemetry (day -> row): merged per day by comparing each
+           row's existing updatedAt field, newest wins.
+         - completions (day -> directiveId -> completion): merged per
+           directive by its existing loggedAt field, newest wins.
+         - journal (day -> {answers, note}): merged per day; answers
+           are unioned per question key (local wins a same-question
+           conflict), note prefers whichever side is non-empty, local
+           on both-non-empty conflict.
+         - markers, fuelPlans, briefings (all day/code/week -> value):
+           unioned, local wins a same-key conflict.
+         - operator (a single settings object, not keyed): local wins
+           wholesale if it differs from remote at all -- this also
+           fixes a related bug where a just-changed profile setting
+           could be silently reverted by the next pull.
+         - seededWorkouts: true if either side is true.
+       Every merge function returns how many genuine same-key
+       conflicts it resolved (both sides had the key with different
+       content), so the caller can tell the user when that happened
+       rather than resolving it invisibly. This is still not a full
+       bidirectional CRDT -- a same-record edit made offline on two
+       different devices before either syncs will have one side's
+       edit kept and the other discarded for that one record -- but
+       it replaces "always lose everything unsynced" with "at worst,
+       lose the specific field that was edited on both sides at once,
+       and be told about it." */
+
+    function mergeArray(localArr, remoteArr) {
+      const remote = remoteArr || [];
+      const local = localArr || [];
+      const byId = {};
+      const noId = [];
+      const noIdSeen = new Set();
+      remote.forEach((item) => {
+        if (item && item.id != null) byId[item.id] = item;
+        else { noId.push(item); noIdSeen.add(JSON.stringify(item)); }
+      });
+      let conflicts = 0;
+      local.forEach((item) => {
+        if (item && item.id != null) {
+          if (byId[item.id] !== undefined && JSON.stringify(byId[item.id]) !== JSON.stringify(item)) conflicts++;
+          byId[item.id] = item;
+        } else {
+          const key = JSON.stringify(item);
+          if (!noIdSeen.has(key)) { noId.push(item); noIdSeen.add(key); }
+        }
+      });
+      return { merged: Object.values(byId).concat(noId), conflicts };
+    }
+
+    function mergeByField(localMap, remoteMap, timeField) {
+      const merged = { ...(remoteMap || {}) };
+      let conflicts = 0;
+      Object.keys(localMap || {}).forEach((k) => {
+        const localRow = localMap[k];
+        if (!(k in merged)) { merged[k] = localRow; return; }
+        const remoteRow = merged[k];
+        if (JSON.stringify(localRow) === JSON.stringify(remoteRow)) return;
+        conflicts++;
+        const lt = localRow && localRow[timeField] ? Date.parse(localRow[timeField]) : 0;
+        const rt = remoteRow && remoteRow[timeField] ? Date.parse(remoteRow[timeField]) : 0;
+        if (lt >= rt) merged[k] = localRow;
+      });
+      return { merged, conflicts };
+    }
+
+    function mergeUnionPreferLocal(localMap, remoteMap) {
+      const merged = { ...(remoteMap || {}) };
+      let conflicts = 0;
+      Object.keys(localMap || {}).forEach((k) => {
+        if (!(k in merged)) { merged[k] = localMap[k]; return; }
+        if (JSON.stringify(localMap[k]) !== JSON.stringify(merged[k])) {
+          conflicts++;
+          merged[k] = localMap[k];
+        }
+      });
+      return { merged, conflicts };
+    }
+
+    function mergeCompletions(localC, remoteC) {
+      const merged = { ...(remoteC || {}) };
+      let conflicts = 0;
+      Object.keys(localC || {}).forEach((day) => {
+        const localDay = localC[day] || {};
+        if (!merged[day]) { merged[day] = localDay; return; }
+        const mergedDay = { ...merged[day] };
+        Object.keys(localDay).forEach((directiveId) => {
+          const localEntry = localDay[directiveId];
+          const remoteEntry = mergedDay[directiveId];
+          if (!remoteEntry) { mergedDay[directiveId] = localEntry; return; }
+          if (JSON.stringify(localEntry) === JSON.stringify(remoteEntry)) return;
+          conflicts++;
+          const lt = localEntry && localEntry.loggedAt ? Date.parse(localEntry.loggedAt) : 0;
+          const rt = remoteEntry && remoteEntry.loggedAt ? Date.parse(remoteEntry.loggedAt) : 0;
+          if (lt >= rt) mergedDay[directiveId] = localEntry;
+        });
+        merged[day] = mergedDay;
+      });
+      return { merged, conflicts };
+    }
+
+    function mergeJournal(localJ, remoteJ) {
+      const merged = { ...(remoteJ || {}) };
+      let conflicts = 0;
+      Object.keys(localJ || {}).forEach((day) => {
+        const localEntry = localJ[day] || {};
+        const remoteEntry = merged[day];
+        if (!remoteEntry) { merged[day] = localEntry; return; }
+        if (JSON.stringify(localEntry) === JSON.stringify(remoteEntry)) return;
+        conflicts++;
+        merged[day] = {
+          answers: { ...(remoteEntry.answers || {}), ...(localEntry.answers || {}) },
+          note: localEntry.note || remoteEntry.note || ""
+        };
+      });
+      return { merged, conflicts };
+    }
+
+    function mergeDB(local, remote) {
+      let conflicts = 0;
+      const count = (n) => { conflicts += n; };
+
+      const telemetry = mergeByField(local.telemetry, remote.telemetry, "updatedAt");
+      count(telemetry.conflicts);
+      const completions = mergeCompletions(local.completions, remote.completions);
+      count(completions.conflicts);
+      const journal = mergeJournal(local.journal, remote.journal);
+      count(journal.conflicts);
+      const markers = mergeUnionPreferLocal(local.markers, remote.markers);
+      count(markers.conflicts);
+      const fuelPlans = mergeUnionPreferLocal(local.fuelPlans, remote.fuelPlans);
+      count(fuelPlans.conflicts);
+      const briefings = mergeUnionPreferLocal(local.briefings, remote.briefings);
+      count(briefings.conflicts);
+
+      const biomarkerLogs = mergeArray(local.biomarkerLogs, remote.biomarkerLogs);
+      count(biomarkerLogs.conflicts);
+      const mealTemplates = mergeArray(local.mealTemplates, remote.mealTemplates);
+      count(mealTemplates.conflicts);
+      const plannedMeals = mergeArray(local.plannedMeals, remote.plannedMeals);
+      count(plannedMeals.conflicts);
+      const workouts = mergeArray(local.workouts, remote.workouts);
+      count(workouts.conflicts);
+      const sessions = mergeArray(local.sessions, remote.sessions);
+      count(sessions.conflicts);
+      const protocols = mergeArray(local.protocols, remote.protocols);
+      count(protocols.conflicts);
+      const fuelLog = mergeArray(local.fuelLog, remote.fuelLog);
+      count(fuelLog.conflicts);
+
+      const operatorDiffers = JSON.stringify(local.operator) !== JSON.stringify(remote.operator);
+      if (operatorDiffers) count(1);
+
+      const merged = {
+        ...remote,
+        operator: local.operator || remote.operator,
+        telemetry: telemetry.merged,
+        markers: markers.merged,
+        biomarkerLogs: biomarkerLogs.merged,
+        fuelPlans: fuelPlans.merged,
+        mealTemplates: mealTemplates.merged,
+        plannedMeals: plannedMeals.merged,
+        workouts: workouts.merged,
+        sessions: sessions.merged,
+        protocols: protocols.merged,
+        completions: completions.merged,
+        briefings: briefings.merged,
+        journal: journal.merged,
+        fuelLog: fuelLog.merged,
+        seededWorkouts: !!(local.seededWorkouts || remote.seededWorkouts)
+      };
+      return { merged, conflicts };
+    }
+
     async function cloudPush() {
       const DB = getDB();
       const sb = getSB();
@@ -261,7 +455,7 @@
     }
 
     async function cloudPull() {
-      const DB = getDB();
+      const local = getDB();
       const sb = getSB();
       if (!sb || !_currentUser) return false;
       try {
@@ -270,22 +464,24 @@
         if (error || !data) return false;
         const remote = data.data;
         if (!remote || remote.version !== 1) return false;
-        // Merge: take remote as the base, but preserve any very recent local writes
-        // by keeping the most recent day's telemetry, sessions, fuelLog, journal
-        const localRecent = {};
-        const todayK = dayKey();
-        if (DB.telemetry[todayK]) localRecent.telemetry = { [todayK]: DB.telemetry[todayK] };
-        const merged = { ...remote };
-        if (localRecent.telemetry) merged.telemetry = { ...merged.telemetry, ...localRecent.telemetry };
-        // Ensure migrations
-        merged.journal = merged.journal || {};
-        merged.fuelLog = merged.fuelLog || [];
-        merged.briefings = merged.briefings || {};
-        merged.workouts = merged.workouts || [];
-        merged.sessions = merged.sessions || [];
-        merged.seededWorkouts = merged.seededWorkouts || false;
+
+        const { merged, conflicts } = mergeDB(local, remote);
         setDB(merged);
-        Storage.set(DB_KEY, JSON.stringify(merged));
+        // saveDB (not a raw Storage.set) so the merge result gets the
+        // same quota/corruption handling and briefing pruning as any
+        // other write, and so it's queued straight back to the cloud
+        // -- harmless (the union is idempotent) and means the next
+        // device to pull sees this merge instead of re-deriving it.
+        saveDB(merged);
+
+        if (conflicts > 0 && showStorageBanner) {
+          showStorageBanner(
+            "Cloud sync merged data from another device. " + conflicts +
+            " item(s) had conflicting edits made on both before they synced; " +
+            "this device's version was kept for those.",
+            "warn"
+          );
+        }
         return true;
       } catch (e) { return false; }
     }
