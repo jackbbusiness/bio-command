@@ -681,7 +681,11 @@
       loadSyncConfig, syncNow, initSupabase,
       hasPassphrase: () => !!loadPassphrase(),
       getSB, getCurrentUser: () => _currentUser,
-      enqueueCloudSync, flushPendingSync
+      enqueueCloudSync, flushPendingSync,
+      // Today's pull-to-refresh gesture reuses the exact same merge
+      // path as boot-time sync -- a no-op (resolves false) if cloud
+      // sync isn't configured/signed in.
+      pullLatest: cloudPull
     };
   }
 

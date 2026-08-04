@@ -481,6 +481,14 @@ main {
 }
 section.view { display: none; }
 section.view.active { display: grid; gap: var(--gutter); }
+/* Every grid item defaults to min-width:auto, which sizes it to fit
+   its content's min-content width -- including any descendant with
+   non-wrapping children (like .metrics-strip's horizontal scroll
+   row), which would otherwise blow the whole grid track (and every
+   sibling in it) out past the viewport. min-width:0 lets each item
+   shrink to the track's actual width and rely on its own overflow
+   handling instead. */
+section.view.active > * { min-width: 0; }
 @media (min-width: 760px) {
   section.view.active { grid-template-columns: 1fr 1fr; }
   .span-2 { grid-column: span 2; }
@@ -694,6 +702,69 @@ html[data-theme="light"] .metric-card { box-shadow: 0 1px 2px rgba(23, 28, 34, 0
 }
 .legend .swatch { width: 8px; height: 8px; border-radius: 3px; display: inline-block; }
 
+/* ---------- Key metrics strip (condensed, above-the-fold on Today) ---------- */
+
+.metrics-strip {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.metrics-strip::-webkit-scrollbar { display: none; }
+.metric-chip {
+  flex: 0 0 auto;
+  min-width: 96px;
+  background: var(--tac-surface);
+  border: 1px solid var(--tac-border);
+  border-radius: var(--r-input);
+  padding: 10px 12px 8px;
+  box-shadow: var(--shadow-1);
+}
+html[data-theme="light"] .metric-chip { box-shadow: 0 1px 2px rgba(23, 28, 34, 0.05); }
+.metric-chip .mc-label {
+  font-family: var(--mono); font-size: 8px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2);
+}
+.metric-chip .mc-value-row { display: flex; align-items: baseline; gap: 3px; margin: 4px 0 4px; }
+.metric-chip .mc-value {
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+  font-size: 18px; font-weight: 650; line-height: 1;
+}
+.metric-chip .mc-unit { font-family: var(--mono); font-size: 8px; color: var(--text-3); }
+.metric-chip .mc-spark { width: 72px; height: 22px; }
+
+/* ---------- Upcoming ---------- */
+
+.upcoming-body { display: flex; align-items: center; gap: 12px; }
+.upcoming-name { font-family: var(--mono); font-size: 14px; font-weight: 650; color: var(--text-1); }
+.upcoming-focus { font-family: var(--mono); font-size: 10px; color: var(--text-3); margin-top: 2px; }
+.upcoming-last { font-family: var(--mono); font-size: 10px; color: var(--text-3); margin-top: 4px; }
+.upcoming-empty { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+.card-head-link {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; color: var(--text-3);
+}
+
+/* ---------- Pull to refresh ---------- */
+
+.pull-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 0;
+  overflow: hidden;
+  color: var(--text-3);
+}
+.pull-refresh .icon { transition: transform var(--dur-fast) var(--ease-out); }
+.pull-refresh.pulling .icon { transform: rotate(180deg); }
+.pull-refresh.refreshing .icon { animation: pullSpin 0.8s linear infinite; }
+@keyframes pullSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .pull-refresh.refreshing .icon { animation: none; }
+}
+
 /* ---------- Intel ---------- */
 
 .intel-headline {
@@ -730,6 +801,7 @@ html[data-theme="light"] .metric-card { box-shadow: 0 1px 2px rgba(23, 28, 34, 0
   display: none;
 }
 .brief-out.show { display: block; }
+.brief-out.skeleton { min-height: 72px; }
 .ask-row { display: flex; gap: 8px; margin-top: 10px; }
 
 /* ---------- Tab bar ---------- */

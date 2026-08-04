@@ -523,7 +523,23 @@
       renderSessionList();
     }
 
-    return { init, render, seedDefaultWorkouts };
+    // Read-only glance for Today's Upcoming card: whichever active
+    // workout has gone longest without a session (never-performed
+    // workouts sort first, via a lastSessionTime of 0).
+    function getUpcomingWorkout() {
+      const DB = getDB();
+      const active = DB.workouts.filter(w => !w.isArchived);
+      if (!active.length) return null;
+      function lastSessionTime(workoutId) {
+        const sessions = DB.sessions.filter(s => s.workoutId === workoutId);
+        if (!sessions.length) return 0;
+        return Math.max(...sessions.map(s => new Date(s.startedAt).getTime()));
+      }
+      const w = active.slice().sort((a, b) => lastSessionTime(a.id) - lastSessionTime(b.id))[0];
+      return { id: w.id, name: w.name, focus: w.focus || "", lastLabel: lastPerformedLabel(w.id) };
+    }
+
+    return { init, render, seedDefaultWorkouts, getUpcomingWorkout };
   }
 
   global.BioCommandTraining = { createTrainingModule };

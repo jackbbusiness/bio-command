@@ -10,8 +10,6 @@
  *   Engines), pending the shared-utilities extraction; also relied on
  *   directly by the Fuel and Training modules.
  * - meanOf() — still defined in app.js (used by Journal/Protocols too).
- * - loadAI() — AI key config reader, still defined in app.js pending
- *   the Settings extraction.
  * - sparkLine() / sparkBars() / bigLine() / bigBars() / bigStacked() —
  *   chart-drawing primitives, still defined in app.js; bigLine is also
  *   relied on directly by the Biomarkers module.
@@ -20,6 +18,20 @@
  * - getDB() / getColors() — accessors rather than plain values, since
  *   DB and COLORS are both reassigned at runtime (import/reset/cloud
  *   sync for DB, theme toggle for COLORS).
+ * - createScoreRing — js/modules/shared/score-ring.js factory, used to
+ *   build the hero ring instead of hand-rolling the arc math here.
+ * - advisor / appendToken — js/modules/shared/ai-stream.js. advisor is
+ *   one shared createAdvisor({transport}) instance (constructed once
+ *   in app.js) so this module never talks to Anthropic directly;
+ *   appendToken is the innerHTML-free token renderer.
+ * - pullLatest — lazy accessor to syncModule.pullLatest, wired this
+ *   way because syncModule is constructed after this module in
+ *   app.js's boot order (same pattern as getDB/getColors: the
+ *   closure only needs to resolve by the time a user gesture, not
+ *   module construction, calls it).
+ * - getUpcomingWorkout — lazy accessor to trainingModule's read-only
+ *   getter, same reasoning.
+ * - showToast — js/modules/shared/toast.js.
  *
  * Exposes openDetail/closeDetail/setAdvisorStatus/showBrief beyond the
  * usual init/render because app.js's boot-time wiring (detail overlay
@@ -30,14 +42,18 @@
 (function (global) {
   function createDashboardModule({
     dayKey, saveDB, fmtMin, clamp01, hexToRgba, bandColor, bandName,
-    baselineFor, computeScores, meanOf, loadAI,
+    baselineFor, computeScores, meanOf,
     sparkLine, sparkBars, bigLine, bigBars, bigStacked,
     renderJournal, renderTabBadges,
+    createScoreRing, advisor, appendToken,
+    pullLatest, getUpcomingWorkout, showToast,
     getDB, getColors
   }) {
     let LAST_ROW = {};
     let LAST_SCORES = {};
     const overlay = document.getElementById("log-overlay");
+    const heroRingHookEl = document.getElementById("hero-ring-hook");
+    const heroRing = createScoreRing({ radius: 62, hexToRgba });
 
     /* ============================================================
        SIM FEED (only when the store is completely empty)
@@ -499,28 +515,35 @@
        RENDER: HERO + METRICS + SLEEP
        ============================================================ */
 
-    const RING_C = 2 * Math.PI * 62;
+    function animateCount(el, to, duration) {
+      const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const from = parseInt(el.textContent, 10);
+      if (reduced || !Number.isFinite(from) || from === to) { el.textContent = to; return; }
+      const start = performance.now();
+      function tick(now) {
+        const p = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(from + (to - from) * eased);
+        if (p < 1) requestAnimationFrame(tick);
+        else el.textContent = to;
+      }
+      requestAnimationFrame(tick);
+    }
 
     function renderHero(t, s, sim) {
       const DB = getDB();
       const COLORS = getColors();
       const rdy = s.readiness;
       const col = bandColor(rdy);
-      const arc = document.getElementById("hero-arc");
       const loggedDays = Object.keys(DB.telemetry).length;
 
-      document.getElementById("rg1").setAttribute("stop-color", col);
-      document.getElementById("rg2").setAttribute("stop-color", col);
-
-      arc.setAttribute("stroke-dasharray", RING_C.toFixed(1));
       const frac = rdy != null ? rdy / 100 : clamp01(loggedDays / 3) * 0.25;
-      arc.setAttribute("stroke-dashoffset", (RING_C * (1 - clamp01(frac))).toFixed(1));
-      arc.style.filter = "drop-shadow(0 0 10px " + hexToRgba(col, 0.5) + ")";
+      heroRing.setProgress(frac, col);
 
       const scoreEl = document.getElementById("hero-score");
       const bandEl = document.getElementById("hero-band");
       if (rdy != null) {
-        scoreEl.textContent = rdy;
+        animateCount(scoreEl, rdy, 700);
         scoreEl.style.color = col;
         bandEl.textContent = bandName(rdy);
       } else {
@@ -605,37 +628,55 @@
         color: () => getColors().green, fmt: v => v.toFixed(1) }
     ];
 
+    // Condensed, single-row, horizontally-scrollable strip -- the
+    // same 6 metrics and tap-to-detail behavior as the old multi-row
+    // grid, laid out to fit above the 390x844 fold alongside the
+    // hero. Badge/day-letter detail is one tap away via openDetail,
+    // not duplicated here.
     function renderMetrics() {
-      const grid = document.getElementById("metrics-grid");
-      const letters = dayLetters();
+      const strip = document.getElementById("metrics-strip");
       const sim = isSim();
-      grid.innerHTML = "";
+      strip.innerHTML = "";
 
       METRICS.forEach(m => {
         const series = sim ? SIM[m.field].slice() : seriesFor(m.field);
         const definedVals = series.filter(v => v != null);
         const latest = definedVals.length ? definedVals[definedVals.length - 1] : null;
         const color = m.color();
-        const badge = badgeFor(m.field, latest, series);
         const spark = m.kind === "bars"
           ? sparkBars(series, color, m.max ? m.max() : null)
           : sparkLine(series, color);
 
-        const card = document.createElement("div");
-        card.className = "metric-card clickable";
-        card.dataset.detail = m.field;
-        card.addEventListener("click", () => openDetail(m.field));
-        card.innerHTML =
-          '<div class="mc-head"><span class="mc-label">' + m.label + "</span>" +
-          '<span class="badge" style="background:' + hexToRgba(badge.col, 0.14) +
-          ";color:" + badge.col + '">' + badge.txt + "</span></div>" +
+        const chip = document.createElement("div");
+        chip.className = "metric-chip clickable";
+        chip.dataset.detail = m.field;
+        chip.addEventListener("click", () => openDetail(m.field));
+        chip.innerHTML =
+          '<div class="mc-label">' + m.label + "</div>" +
           '<div class="mc-value-row"><span class="mc-value" style="color:' + color + '">' +
           (latest != null ? m.fmt(latest) : "--") + "</span>" +
           '<span class="mc-unit">' + m.unit + "</span></div>" +
-          spark +
-          '<div class="mc-days">' + letters.map(l => "<span>" + l + "</span>").join("") + "</div>";
-        grid.appendChild(card);
+          spark;
+        strip.appendChild(chip);
       });
+    }
+
+    function renderUpcoming() {
+      const body = document.getElementById("upcoming-body");
+      const w = getUpcomingWorkout ? getUpcomingWorkout() : null;
+      if (!w) {
+        body.innerHTML = '<div class="upcoming-empty">No workouts set up yet.</div>';
+        return;
+      }
+      body.innerHTML =
+        '<div style="flex:1;">' +
+        '<div class="upcoming-name"></div>' +
+        '<div class="upcoming-focus"></div>' +
+        '<div class="upcoming-last"></div>' +
+        "</div>";
+      body.querySelector(".upcoming-name").textContent = w.name;
+      body.querySelector(".upcoming-focus").textContent = w.focus || "";
+      body.querySelector(".upcoming-last").textContent = w.lastLabel;
     }
 
     function renderSleep(t) {
@@ -684,6 +725,7 @@
 
       renderHero(t, s, sim);
       renderMetrics();
+      renderUpcoming();
       renderSleep(t);
       renderIntel();
       renderJournal();
@@ -821,40 +863,41 @@
       "for symptoms or health concerns tell the operator to see a clinician. Under 220 " +
       "words. UK English. Terse command-brief tone, short lines, plain text, no markdown.";
 
-    async function callAdvisor(userText) {
-      const cfg = loadAI();
-      if (!cfg || !cfg.key) throw new Error("SET KEY IN SYS");
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": cfg.key,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 700,
-          system: ADVISOR_SYSTEM,
-          messages: [{ role: "user", content: userText }]
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        const msg = (data && data.error && data.error.message) || ("HTTP " + res.status);
-        throw new Error(msg);
-      }
-      return (data.content || [])
-        .filter(b => b.type === "text")
-        .map(b => b.text)
-        .join("\n")
-        .trim();
-    }
-
     function showBrief(text) {
       const out = document.getElementById("brief-out");
       out.textContent = text;
+      out.classList.remove("skeleton");
       out.classList.add("show");
+    }
+
+    // Shared by generateBriefing/askAdvisor: streams tokens straight
+    // into #brief-out via appendToken (never innerHTML -- the C1 XSS
+    // fix holds regardless of what the model returns), showing a
+    // skeleton shimmer only for the real gap before the first token
+    // arrives (removed the instant a token lands, via :empty no
+    // longer matching).
+    async function streamInto(prompt, { onDone, onOk } = {}) {
+      const out = document.getElementById("brief-out");
+      out.textContent = "";
+      out.className = "brief-out show skeleton";
+      setAdvisorStatus("ANALYZING...");
+      let full = "";
+      await advisor.ask(prompt, {
+        system: ADVISOR_SYSTEM,
+        onToken: (delta) => {
+          if (!full) out.classList.remove("skeleton");
+          full += delta;
+          appendToken(out, delta);
+        },
+        onDone: () => {
+          setAdvisorStatus(onOk || "DONE", "ok");
+          if (typeof onDone === "function") onDone(full);
+        },
+        onError: (e) => {
+          out.classList.remove("skeleton");
+          setAdvisorStatus("OFFLINE: " + e.message, "err");
+        }
+      });
     }
 
     async function generateBriefing() {
@@ -865,35 +908,79 @@
         setAdvisorStatus("CACHED " + k, "ok");
         return;
       }
-      try {
-        setAdvisorStatus("ANALYZING...");
-        const text = await callAdvisor(
-          "DAILY BRIEFING REQUEST. TELEMETRY DIGEST:\n" + JSON.stringify(buildDigest()));
-        DB.briefings[k] = text;
-        saveDB(DB);
-        showBrief(text);
-        setAdvisorStatus("BRIEFED " + k, "ok");
-      } catch (e) {
-        setAdvisorStatus("OFFLINE: " + e.message, "err");
-      }
+      await streamInto(
+        "DAILY BRIEFING REQUEST. TELEMETRY DIGEST:\n" + JSON.stringify(buildDigest()),
+        {
+          onOk: "BRIEFED " + k,
+          onDone: (full) => { DB.briefings[k] = full; saveDB(DB); }
+        }
+      );
     }
 
     async function askAdvisor() {
       const q = document.getElementById("ai-q").value.trim();
       if (!q) return;
-      try {
-        setAdvisorStatus("ANALYZING...");
-        const text = await callAdvisor(
-          "OPERATOR QUESTION: " + q +
-          "\nTELEMETRY DIGEST:\n" + JSON.stringify(buildDigest()));
-        showBrief(text);
-        setAdvisorStatus("ANSWERED", "ok");
-      } catch (e) {
-        setAdvisorStatus("OFFLINE: " + e.message, "err");
-      }
+      await streamInto(
+        "OPERATOR QUESTION: " + q + "\nTELEMETRY DIGEST:\n" + JSON.stringify(buildDigest()),
+        { onOk: "ANSWERED" }
+      );
+    }
+
+    // Vanilla touch-gesture pull-to-refresh, scoped to Today: only
+    // arms when the page is already scrolled to the top (so it can't
+    // fight normal scrolling), re-runs the same cloud-pull path boot
+    // uses, then re-renders. No-ops safely (resolves false) when
+    // cloud sync isn't configured -- still worth the gesture existing
+    // since it also just re-renders from whatever's in local storage.
+    function initPullToRefresh() {
+      const view = document.getElementById("view-command");
+      const indicator = document.getElementById("pull-refresh-indicator");
+      if (!view || !indicator) return;
+      const THRESHOLD = 64;
+      let startY = null, pulling = false, refreshing = false;
+
+      view.addEventListener("touchstart", (e) => {
+        if (refreshing) return;
+        startY = window.scrollY <= 0 ? e.touches[0].clientY : null;
+        pulling = false;
+      }, { passive: true });
+
+      view.addEventListener("touchmove", (e) => {
+        if (startY == null || refreshing) return;
+        const dy = e.touches[0].clientY - startY;
+        if (dy <= 0) { indicator.style.height = "0px"; indicator.classList.remove("pulling"); pulling = false; return; }
+        pulling = true;
+        const h = Math.min(dy * 0.5, 64);
+        indicator.style.height = h + "px";
+        indicator.classList.toggle("pulling", h >= THRESHOLD);
+      }, { passive: true });
+
+      view.addEventListener("touchend", () => {
+        const triggered = pulling && indicator.classList.contains("pulling");
+        startY = null;
+        pulling = false;
+        if (!triggered) { indicator.style.height = "0px"; return; }
+        refreshing = true;
+        indicator.classList.remove("pulling");
+        indicator.classList.add("refreshing");
+        indicator.style.height = "40px";
+        Promise.resolve(pullLatest ? pullLatest() : false)
+          .then((didPull) => {
+            renderCommand();
+            if (showToast) showToast(didPull ? "Synced from cloud" : "Up to date", { tone: "ok", duration: 2000 });
+          })
+          .catch(() => { if (showToast) showToast("Sync failed", { tone: "error", duration: 2500 }); })
+          .finally(() => {
+            refreshing = false;
+            indicator.classList.remove("refreshing");
+            indicator.style.height = "0px";
+          });
+      }, { passive: true });
     }
 
     function init() {
+      heroRingHookEl.insertAdjacentHTML("afterbegin", heroRing.markup());
+
       document.getElementById("btn-log").addEventListener("click", openLog);
       document.getElementById("btn-save-log").addEventListener("click", saveLog);
       document.getElementById("btn-cancel-log").addEventListener("click", () => overlay.classList.remove("open"));
@@ -905,10 +992,9 @@
       });
       document.getElementById("btn-ask").addEventListener("click", askAdvisor);
 
-      const heroRingHook = document.getElementById("hero-ring-hook");
-      if (heroRingHook) {
-        heroRingHook.classList.add("clickable");
-        heroRingHook.addEventListener("click", () => openDetail("recovery"));
+      if (heroRingHookEl) {
+        heroRingHookEl.classList.add("clickable");
+        heroRingHookEl.addEventListener("click", () => openDetail("recovery"));
       }
       document.querySelectorAll(".stat-chip[data-detail]").forEach(el => {
         el.classList.add("clickable");
@@ -919,7 +1005,16 @@
         sleepArchCard.classList.add("clickable");
         sleepArchCard.addEventListener("click", () => openDetail("sleepArch"));
       }
+      const upcomingCard = document.getElementById("upcoming-card");
+      if (upcomingCard) {
+        upcomingCard.addEventListener("click", () => {
+          const trainTab = document.querySelector('nav.tabbar button[data-view="view-training"]');
+          if (trainTab) trainTab.click();
+        });
+      }
       document.getElementById("btn-close-detail").addEventListener("click", closeDetail);
+
+      initPullToRefresh();
     }
 
     return { init, render: renderCommand, openDetail, closeDetail, setAdvisorStatus, showBrief };

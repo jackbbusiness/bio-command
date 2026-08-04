@@ -88,6 +88,9 @@ const { genId } = window.BioCommandShared.ids;
 const { hexToRgba, readColors } = window.BioCommandShared.colors;
 const { escapeHtml } = window.BioCommandShared.sanitize;
 const { initOverlayFocusManagement } = window.BioCommandShared.focusTrap;
+const { createScoreRing } = window.BioCommandShared.scoreRing;
+const { showToast } = window.BioCommandShared.toast;
+const { createAdvisor, createBrowserAnthropicTransport, appendToken } = window.BioCommandShared.aiStream;
 
 let COLORS = readColors();
 
@@ -126,7 +129,26 @@ const settingsModule = window.BioCommandSettings.createSettingsModule({
 settingsModule.init();
 
 /* ============================================================
+   AI ADVISOR (js/modules/shared/ai-stream.js)
+   One shared transport-neutral instance: every module that wants an
+   AI response (Dashboard now; Fuel/Biomarkers/History in later
+   phases) calls advisor.ask(...) rather than fetching Anthropic
+   directly. Swapping the transport later (e.g. to a Supabase Edge
+   Function proxy) is a one-line change here, not a per-module rewrite.
+   ============================================================ */
+
+const advisorTransport = createBrowserAnthropicTransport({
+  getApiKey: () => { const cfg = settingsModule.loadAI(); return cfg && cfg.key; }
+});
+const advisor = createAdvisor({ transport: advisorTransport });
+
+/* ============================================================
    DASHBOARD / TODAY VIEW (extracted into js/modules/dashboard/index.js)
+   pullLatest/getUpcomingWorkout are lazy accessors into syncModule/
+   trainingModule, both constructed later in this file -- safe
+   because they're only ever called from a user gesture, well after
+   the whole file (and both modules) have finished loading, same
+   pattern as getDB/getColors below.
    ============================================================ */
 
 const dashboardModule = window.BioCommandDashboard.createDashboardModule({
@@ -140,7 +162,6 @@ const dashboardModule = window.BioCommandDashboard.createDashboardModule({
   baselineFor,
   computeScores,
   meanOf,
-  loadAI: settingsModule.loadAI,
   sparkLine,
   sparkBars,
   bigLine,
@@ -148,6 +169,12 @@ const dashboardModule = window.BioCommandDashboard.createDashboardModule({
   bigStacked,
   renderJournal,
   renderTabBadges,
+  createScoreRing,
+  advisor,
+  appendToken,
+  pullLatest: () => syncModule.pullLatest(),
+  getUpcomingWorkout: () => trainingModule.getUpcomingWorkout(),
+  showToast,
   getDB: () => DB,
   getColors: () => COLORS
 });

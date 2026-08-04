@@ -14,7 +14,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.openfoodfacts.org; media-src 'self' blob:; font-src 'self'; connect-src 'self' https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <script src="js/vendor/supabase.min.js?v=2.112.0"></script>
 <script src="js/theme-boot.js?v=2.3.0"></script>
-<link rel="stylesheet" href="css/app.css?v=2.3.3">
+<link rel="stylesheet" href="css/app.css?v=2.4.0">
 <link rel="stylesheet" href="css/intelligence.css?v=2.3.1">
 <link rel="stylesheet" href="css/history.css?v=2.3.1">
 </head>
@@ -79,20 +79,14 @@
   <!-- ================= TODAY / COMMAND ================= -->
   <section class="view active" id="view-command">
 
+    <div class="span-2 pull-refresh" id="pull-refresh-indicator" aria-hidden="true">
+      <svg class="icon" aria-hidden="true"><use href="#icon-refresh"></use></svg>
+    </div>
+
     <!-- Hero: recovery ring + glanceable chips -->
     <div class="hud-card hero span-2">
       <div class="hero-top">
         <div class="ring-wrap" id="hero-ring-hook">
-          <svg viewBox="0 0 148 148">
-            <defs>
-              <linearGradient id="ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" id="rg1" stop-color="#1FE87E"></stop>
-                <stop offset="100%" id="rg2" stop-color="#1FE87E" stop-opacity="0.45"></stop>
-              </linearGradient>
-            </defs>
-            <circle class="ring-track" cx="74" cy="74" r="62"></circle>
-            <circle class="ring-arc" id="hero-arc" cx="74" cy="74" r="62" stroke="url(#ring-grad)"></circle>
-          </svg>
           <div class="ring-center">
             <span class="hero-score" id="hero-score">--</span>
             <span class="hero-metric-label">RECOVERY</span>
@@ -127,48 +121,16 @@
       </div>
     </div>
 
-    <!-- Key metrics -->
+    <!-- Key metrics -- condensed horizontal strip so this stays
+         above the fold alongside the hero; same 6 metrics as before,
+         same tap-to-detail, just laid out to fit the height budget. -->
     <div class="span-2">
       <div class="card-head" style="margin-bottom:9px; padding: 0 2px;">
         <span class="hud-label">Key Metrics</span>
         <span class="spacer"></span>
-        <span class="telemetry cap t3">LAST 7 DAYS &middot; TAP FOR DETAIL</span>
+        <span class="telemetry cap t3">TAP FOR DETAIL</span>
       </div>
-      <div class="metrics-grid" id="metrics-grid"></div>
-    </div>
-
-    <!-- Sleep architecture -->
-    <div class="hud-card span-2" id="sleep-arch-card">
-      <div class="card-head">
-        <span class="hud-label">Sleep Architecture</span>
-        <span class="spacer"></span>
-        <span class="telemetry cap t2" id="sleep-total">--</span>
-      </div>
-      <div class="sleep-track" id="sleep-track"></div>
-      <div class="legend" id="sleep-legend"></div>
-    </div>
-
-    <!-- Daily intel -->
-    <div class="hud-card span-2">
-      <div class="card-head">
-        <span class="status-dot" style="color: var(--cyan)"></span>
-        <span class="hud-label">Daily Intel</span>
-        <span class="spacer"></span>
-        <span class="telemetry cap t3">ON-DEVICE</span>
-      </div>
-      <div class="intel-headline" id="intel-headline"></div>
-      <div class="intel-list" id="intel-list"></div>
-    </div>
-
-    <!-- Daily journal card (Whoop-style morning check-in) -->
-    <div class="hud-card span-2" id="cmd-journal-card">
-      <div class="card-head">
-        <span class="status-dot" id="journal-cmd-dot" style="color: var(--amber)"></span>
-        <span class="hud-label">Morning Journal</span>
-        <span class="spacer"></span>
-        <span class="j-streak" id="journal-streak"></span>
-      </div>
-      <div class="journal-card" id="cmd-journal-body"></div>
+      <div class="metrics-strip" id="metrics-strip"></div>
     </div>
 
     <!-- Advisor brief (output only; key lives in SYS) -->
@@ -188,6 +150,50 @@
                style="flex:1;" autocapitalize="off">
         <button class="tac-btn" id="btn-ask">Ask</button>
       </div>
+    </div>
+
+    <!-- Upcoming: read-only glance at Training, no logging here -->
+    <div class="hud-card span-2 clickable" id="upcoming-card">
+      <div class="card-head">
+        <span class="hud-label">Upcoming</span>
+        <span class="spacer"></span>
+        <span class="card-head-link">TRAIN<svg class="icon icon-sm" aria-hidden="true"><use href="#icon-chevron-right"></use></svg></span>
+      </div>
+      <div id="upcoming-body"></div>
+    </div>
+
+    <!-- Sleep architecture -->
+    <div class="hud-card span-2" id="sleep-arch-card">
+      <div class="card-head">
+        <span class="hud-label">Sleep Architecture</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t2" id="sleep-total">--</span>
+      </div>
+      <div class="sleep-track" id="sleep-track"></div>
+      <div class="legend" id="sleep-legend"></div>
+    </div>
+
+    <!-- Daily journal card (Whoop-style morning check-in) -->
+    <div class="hud-card span-2" id="cmd-journal-card">
+      <div class="card-head">
+        <span class="status-dot" id="journal-cmd-dot" style="color: var(--amber)"></span>
+        <span class="hud-label">Morning Journal</span>
+        <span class="spacer"></span>
+        <span class="j-streak" id="journal-streak"></span>
+      </div>
+      <div class="journal-card" id="cmd-journal-body"></div>
+    </div>
+
+    <!-- Daily intel -->
+    <div class="hud-card span-2">
+      <div class="card-head">
+        <span class="status-dot" style="color: var(--cyan)"></span>
+        <span class="hud-label">Daily Intel</span>
+        <span class="spacer"></span>
+        <span class="telemetry cap t3">ON-DEVICE</span>
+      </div>
+      <div class="intel-headline" id="intel-headline"></div>
+      <div class="intel-list" id="intel-list"></div>
     </div>
 
   </section>
@@ -1031,16 +1037,16 @@
 <script src="js/modules/shared/ai-stream.js?v=2.3.3"></script>
 <script src="js/modules/history/index.js?v=2.2.2"></script>
 <script src="js/modules/fuel/index.js?v=2.2.2"></script>
-<script src="js/modules/training/index.js?v=2.2.2"></script>
+<script src="js/modules/training/index.js?v=2.4.0"></script>
 <script src="js/modules/journal/index.js?v=2.2.2"></script>
 <script src="js/modules/biomarkers/index.js?v=2.2.2"></script>
 <script src="js/modules/protocols/index.js?v=2.2.2"></script>
-<script src="js/modules/dashboard/index.js?v=2.3.1"></script>
+<script src="js/modules/dashboard/index.js?v=2.4.0"></script>
 <script src="js/modules/settings/index.js?v=2.3.1"></script>
 <script src="js/modules/data-management/index.js?v=2.2.2"></script>
-<script src="js/modules/sync/index.js?v=2.2.2"></script>
+<script src="js/modules/sync/index.js?v=2.4.0"></script>
 <script src="js/modules/notifications/index.js?v=2.2.2"></script>
-<script src="js/app.js?v=2.3.2"></script>
+<script src="js/app.js?v=2.4.0"></script>
 <script src="js/intelligence.js?v=2.2.2"></script>
 <script src="js/history.js?v=2.2.2"></script>
 </body>
